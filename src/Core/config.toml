@@ -1,0 +1,8 @@
+# Config file
+
+name = "Tätigkeitsbericht"
+version = "1.0.0"
+
+[database]
+type = "sqlite"
+path = "myapp.db"
