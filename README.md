@@ -1,6 +1,6 @@
 # Tätigkeitsbericht
 
-Die Zeitaufschreibung soll nach den Kriterien der Clean-Asrchitektur passieren, sodass die Programmbestandteile 
+Die Zeitaufschreibung soll nach den Kriterien der Clean-Architektur passieren, sodass die Programmbestandteile 
 wiederverwendet werden können. 
 
 ## Desktop-Frontend 
