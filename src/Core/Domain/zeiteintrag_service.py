@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, time
+from typing import Optional
 
 from .models import Zeiteintrag
 from .zeiteintrag_repository import ZeiteintragRepository
@@ -27,8 +28,8 @@ class ZeiteintragService:
     def hole_zeiteintrag(self, datum: date) -> list[Zeiteintrag]:
         return self._repository.get_by_datum(datum)
 
-    def liste_zeiteintraege(self) -> list[Zeiteintrag]:
-        return self._repository.list_all()
+    def liste_zeiteintraege(self, jahr: Optional[int] = None) -> list[Zeiteintrag]:
+        return self._repository.list_all(jahr=jahr)
 
     def loesche_zeiteintrag(self, datum: date) -> bool:
         return self._repository.delete_by_datum(datum)

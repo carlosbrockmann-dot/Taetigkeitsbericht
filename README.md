@@ -26,11 +26,7 @@ Tabelle Stundenplan (name=tblStundenplan)
 
 Tabelle "Feiertage" (name=tblFeiertage)
 - Datum: Date
-- Uhrzeit_Von: Time
-- Uhrzeit_Bis: Time
-- Unterbrechung_Beginn: Time
-- Unterbrechung_Ende: Time
-- Anmerkung: String(80) 
+- Feiertagname: String
 
 
 ## Desktop-Frontend 
@@ -51,5 +47,24 @@ Dann spätestens muss man sich vorher einloggen und ein Token für die Abgabe er
 
 Soll auf jeden Fall über ein ORM-Framework wie AIAlchemy oder SQLModel geschehen. Per DI und mit dem Reposity-Pattern kann man sich aussuchen, mit welcher Datenbank sich verbinden will. 
 
+
+## Python Setup
+
+Empfohlen ist eine lokale virtuelle Umgebung (`venv`), damit Abhaengigkeiten isoliert sind.
+
+PowerShell (Windows):
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+Zum Verlassen der Umgebung:
+
+```powershell
+deactivate
+```
 
 

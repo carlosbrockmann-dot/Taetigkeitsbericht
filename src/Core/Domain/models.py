@@ -38,5 +38,9 @@ class Stundenplan(ArbeitszeitBasis):
     wochentag: int = Field(ge=1, le=7, description="1=Montag, 7=Sonntag")
 
 
-class Feiertag(ArbeitszeitBasis):
+class Feiertag(BaseModel):
     datum: date
+    feiertagsname: str = Field(max_length=80, description="Name des Feiertags")
+ 
+
+ 
