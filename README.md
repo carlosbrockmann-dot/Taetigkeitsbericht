@@ -31,7 +31,7 @@ Tabelle "Feiertage" (name=tblFeiertage)
 
 ## Desktop-Frontend 
 
-Diese Anwendung soll eine plattformübergreifendes Desktop-Frontend ergeben, das die Zeitaufschreibung in eine MySQL-Datenbank speichert. 
+Diese Anwendung soll eine plattformübergreifendes Desktop-Frontend ergeben, das die Zeitaufschreibung in eine SQLite-Datenbank speichert. 
 Zusätzlich soll ein Export der Stunden nach MS-Excel möglich sein. 
 
 ## Web-Frontend 
@@ -45,14 +45,29 @@ Dann spätestens muss man sich vorher einloggen und ein Token für die Abgabe er
 
 ## Anbindung zur Datenbank 
 
-Soll auf jeden Fall über ein ORM-Framework wie AIAlchemy oder SQLModel geschehen. Per DI und mit dem Reposity-Pattern kann man sich aussuchen, mit welcher Datenbank sich verbinden will. 
+Die Persistenz erfolgt über SQLite. Die Anbindung geschieht über ein ORM (SQLModel auf Basis von SQLAlchemy); per Dependency Injection und Repository-Pattern bleiben die Aufrufer von der konkreten Speicherung entkoppelt. 
 
 
 ## Python Setup
 
 Empfohlen ist eine lokale virtuelle Umgebung (`venv`), damit Abhaengigkeiten isoliert sind.
 
-PowerShell (Windows):
+### Linux (Bash)
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+Zum Verlassen der Umgebung:
+
+```bash
+deactivate
+```
+
+### Windows (PowerShell)
 
 ```powershell
 python -m venv .venv
@@ -67,4 +82,39 @@ Zum Verlassen der Umgebung:
 deactivate
 ```
 
+### Pydantic installieren
+
+Mit aktivierter virtueller Umgebung (siehe oben) ist Pydantic bereits enthalten, wenn Sie alle Abhaengigkeiten aus `requirements.txt` installiert haben. Alternativ nur Pydantic nach gleicher Versionsvorgabe wie in der Datei:
+
+**Linux (Bash)**
+
+```bash
+pip install "pydantic>=2.7,<3.0"
+```
+
+**Windows (PowerShell)**
+
+```powershell
+pip install "pydantic>=2.7,<3.0"
+```
+
+Die Befehle sind auf beiden Systemen identisch, sobald `pip` aus der aktiven `.venv` verwendet wird.
+
+### SQLModel installieren
+
+SQLModel baut auf SQLAlchemy und Pydantic auf; mit `pip install -r requirements.txt` ist es ebenfalls dabei. Nur SQLModel installieren (Version wie in `requirements.txt`):
+
+**Linux (Bash)**
+
+```bash
+pip install "sqlmodel>=0.0.22"
+```
+
+**Windows (PowerShell)**
+
+```powershell
+pip install "sqlmodel>=0.0.22"
+```
+
+Wiederum gleicher `pip`-Aufruf unter Linux und Windows bei aktivierter virtueller Umgebung.
 

@@ -1,0 +1,37 @@
+from __future__ import annotations
+
+from datetime import date, time
+from typing import Optional
+
+from sqlmodel import Field, SQLModel
+
+
+class ZeiteintragTable(SQLModel, table=True):
+    __tablename__ = "zeiteintrag"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    datum: date
+    uhrzeit_von: time
+    uhrzeit_bis: time
+    unterbrechung_beginn: Optional[time] = None
+    unterbrechung_ende: Optional[time] = None
+    anmerkung: Optional[str] = Field(default=None, max_length=80)
+
+
+class StundenplanTable(SQLModel, table=True):
+    __tablename__ = "stundenplan"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    wochentag: int = Field(ge=1, le=7)
+    uhrzeit_von: time
+    uhrzeit_bis: time
+    unterbrechung_beginn: Optional[time] = None
+    unterbrechung_ende: Optional[time] = None
+    anmerkung: Optional[str] = Field(default=None, max_length=80)
+
+
+class FeiertagTable(SQLModel, table=True):
+    __tablename__ = "feiertag"
+
+    datum: date = Field(primary_key=True)
+    feiertagsname: str = Field(max_length=80)
