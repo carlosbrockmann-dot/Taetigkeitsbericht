@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, time
 
 from .models import Zeiteintrag
 from .zeiteintrag_repository import ZeiteintragRepository
@@ -11,12 +11,20 @@ class ZeiteintragService:
         self._repository = repository
 
     def erfasse_zeiteintrag(self, eintrag: Zeiteintrag) -> Zeiteintrag:
-        vorhandener_eintrag = self._repository.get_by_datum(eintrag.datum)
-        if vorhandener_eintrag is not None:
-            raise ValueError(f"Fuer das Datum {eintrag.datum} existiert bereits ein Eintrag.")
+        vorhandene_eintraege = self._repository.get_by_datum(eintrag.datum)
+        for vorhandener_eintrag in vorhandene_eintraege:
+            if self._zeitraeume_ueberschneiden_sich(
+                eintrag.uhrzeit_von,
+                eintrag.uhrzeit_bis,
+                vorhandener_eintrag.uhrzeit_von,
+                vorhandener_eintrag.uhrzeit_bis,
+            ):
+                raise ValueError(
+                    "Der Zeitraum ueberschneidet sich mit einem bestehenden Zeiteintrag am selben Datum."
+                )
         return self._repository.add(eintrag)
 
-    def hole_zeiteintrag(self, datum: date) -> Zeiteintrag | None:
+    def hole_zeiteintrag(self, datum: date) -> list[Zeiteintrag]:
         return self._repository.get_by_datum(datum)
 
     def liste_zeiteintraege(self) -> list[Zeiteintrag]:
@@ -24,3 +32,12 @@ class ZeiteintragService:
 
     def loesche_zeiteintrag(self, datum: date) -> bool:
         return self._repository.delete_by_datum(datum)
+
+    @staticmethod
+    def _zeitraeume_ueberschneiden_sich(
+        neuer_von: time,
+        neuer_bis: time,
+        bestehender_von: time,
+        bestehender_bis: time,
+    ) -> bool:
+        return neuer_von < bestehender_bis and bestehender_von < neuer_bis

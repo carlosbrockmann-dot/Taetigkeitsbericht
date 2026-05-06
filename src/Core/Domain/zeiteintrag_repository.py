@@ -10,7 +10,7 @@ class ZeiteintragRepository(Protocol):
     def add(self, eintrag: Zeiteintrag) -> Zeiteintrag:
         ...
 
-    def get_by_datum(self, datum: date) -> Zeiteintrag | None:
+    def get_by_datum(self, datum: date) -> list[Zeiteintrag]:
         ...
 
     def list_all(self) -> list[Zeiteintrag]:
