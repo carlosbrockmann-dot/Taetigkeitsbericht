@@ -3,11 +3,11 @@ from __future__ import annotations
 from datetime import time
 
 from .models import Stundenplan
-from .stundenplan_repository import StundenplanRepository
+from .stundenplan_repository_interface import IStundenplanRepository
 
 
 class StundenplanService:
-    def __init__(self, repository: StundenplanRepository) -> None:
+    def __init__(self, repository: IStundenplanRepository) -> None:
         self._repository = repository
 
     def erfasse_stundenplaneintrag(self, eintrag: Stundenplan) -> Stundenplan:

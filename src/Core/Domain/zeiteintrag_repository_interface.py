@@ -6,7 +6,7 @@ from typing import Optional, Protocol
 from .models import Zeiteintrag
 
 
-class ZeiteintragRepository(Protocol):
+class IZeiteintragRepository(Protocol):
     def add(self, eintrag: Zeiteintrag) -> Zeiteintrag:
         ...
 

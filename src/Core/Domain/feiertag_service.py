@@ -3,12 +3,12 @@ from __future__ import annotations
 from datetime import date
 from typing import Optional
 
-from .feiertag_repository import FeiertagRepository
+from .feiertag_repository_interface import IFeiertagRepository
 from .models import Feiertag
 
 
 class FeiertagService:
-    def __init__(self, repository: FeiertagRepository) -> None:
+    def __init__(self, repository: IFeiertagRepository) -> None:
         self._repository = repository
 
     def erfasse_feiertag(self, eintrag: Feiertag) -> Feiertag:

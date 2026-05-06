@@ -6,7 +6,7 @@ from typing import Optional, Protocol
 from .models import Feiertag
 
 
-class FeiertagRepository(Protocol):
+class IFeiertagRepository(Protocol):
     def add(self, eintrag: Feiertag) -> Feiertag:
         ...
 

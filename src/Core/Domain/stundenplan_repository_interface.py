@@ -5,7 +5,7 @@ from typing import Protocol
 from .models import Stundenplan
 
 
-class StundenplanRepository(Protocol):
+class IStundenplanRepository(Protocol):
     def add(self, eintrag: Stundenplan) -> Stundenplan:
         ...
 

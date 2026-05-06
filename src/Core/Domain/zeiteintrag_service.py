@@ -4,11 +4,11 @@ from datetime import date, time
 from typing import Optional
 
 from .models import Zeiteintrag
-from .zeiteintrag_repository import ZeiteintragRepository
+from .zeiteintrag_repository_interface import IZeiteintragRepository
 
 
 class ZeiteintragService:
-    def __init__(self, repository: ZeiteintragRepository) -> None:
+    def __init__(self, repository: IZeiteintragRepository) -> None:
         self._repository = repository
 
     def erfasse_zeiteintrag(self, eintrag: Zeiteintrag) -> Zeiteintrag:
