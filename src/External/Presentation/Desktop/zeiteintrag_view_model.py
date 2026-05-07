@@ -28,11 +28,11 @@ class ZeiteintragViewModel(QObject):
     def remove_rows(self, row_indices: list[int]) -> None:
         self._table_model.remove_rows(row_indices)
 
-    def lade_jahr(self, jahr: int) -> None:
+    def lade_zeitraum(self, jahr: int, monat: int) -> None:
         eintraege = self._anwendung.liste(jahr=jahr)
         rows = [
             ZeiteintragRow(
-                datum=e.datum.isoformat(),
+                datum=e.datum.strftime("%d.%m.%Y"),
                 uhrzeit_von=e.uhrzeit_von.strftime("%H:%M"),
                 uhrzeit_bis=e.uhrzeit_bis.strftime("%H:%M"),
                 unterbrechung_beginn=e.unterbrechung_beginn.strftime("%H:%M") if e.unterbrechung_beginn else "",
@@ -40,9 +40,10 @@ class ZeiteintragViewModel(QObject):
                 anmerkung=e.anmerkung or "",
             )
             for e in eintraege
+            if e.datum.month == monat
         ]
         self._table_model.set_rows(rows)
-        self.status_changed.emit(f"{len(rows)} Eintrag/Eintreage fuer Jahr {jahr} geladen.")
+        self.status_changed.emit(f"{len(rows)} Eintrag/Eintreage fuer {monat:02d}/{jahr} geladen.")
 
     def speichere_alle(self) -> None:
         if not self._table_model.rows:
@@ -72,7 +73,7 @@ class ZeiteintragViewModel(QObject):
 
     @staticmethod
     def _parse_date(value: str) -> date:
-        return datetime.strptime(value.strip(), "%Y-%m-%d").date()
+        return datetime.strptime(value.strip(), "%d.%m.%Y").date()
 
     @staticmethod
     def _parse_time(value: str, feldname: str) -> time:

@@ -17,12 +17,20 @@ class ZeiteintragRow:
 
 class ZeiteintragTableModel(QAbstractTableModel):
     HEADERS = [
-        "Datum (YYYY-MM-DD)",
-        "Von (HH:MM)",
-        "Bis (HH:MM)",
-        "Pause Beginn (HH:MM)",
-        "Pause Ende (HH:MM)",
-        "Anmerkung",
+        "Datum",
+        "Von",
+        "Bis",
+        "Pause Von",
+        "Pause Bis",
+        "Kommentar",
+    ]
+    HEADER_TOOLTIPS = [
+        "Erwartetes Format: DD.MM.YYYY, z. B. 07.05.2026",
+        "Erwartetes Format: HH:MM, z. B. 08:30",
+        "Erwartetes Format: HH:MM, z. B. 17:00",
+        "Optionales Format: HH:MM, z. B. 12:00",
+        "Optionales Format: HH:MM, z. B. 12:30",
+        "Freitext (max. 80 Zeichen)",
     ]
 
     def __init__(self) -> None:
@@ -51,10 +59,15 @@ class ZeiteintragTableModel(QAbstractTableModel):
     def headerData(  # noqa: N802
         self, section: int, orientation: Qt.Orientation, role: int = Qt.DisplayRole
     ) -> str | None:
+        if section < 0 or section >= len(self.HEADERS):
+            return None
+
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            return self.HEADERS[section]
+        if orientation == Qt.Horizontal and role == Qt.ToolTipRole:
+            return self.HEADER_TOOLTIPS[section]
         if role != Qt.DisplayRole:
             return None
-        if orientation == Qt.Horizontal:
-            return self.HEADERS[section]
         return str(section + 1)
 
     def data(self, index: QModelIndex, role: int = Qt.DisplayRole) -> str | None:

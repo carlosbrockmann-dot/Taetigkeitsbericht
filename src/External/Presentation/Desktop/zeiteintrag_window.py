@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QComboBox,
     QSpinBox,
     QTableView,
     QVBoxLayout,
@@ -36,6 +37,10 @@ class ZeiteintragWindow(QMainWindow):
         self._jahr_spin.setRange(2000, 2100)
         self._jahr_spin.setValue(date.today().year)
         self._jahr_spin.setPrefix("Jahr: ")
+        self._monat_combo = QComboBox(self)
+        for monat in range(1, 13):
+            self._monat_combo.addItem(f"{monat:02d}", monat)
+        self._monat_combo.setCurrentIndex(date.today().month - 1)
 
         self._laden_button = QPushButton("Laden", self)
         self._zeile_hinzufuegen_button = QPushButton("Zeile hinzufuegen", self)
@@ -44,6 +49,7 @@ class ZeiteintragWindow(QMainWindow):
         self._status_label = QLabel("Bereit.", self)
 
         toolbar_layout.addWidget(self._jahr_spin)
+        toolbar_layout.addWidget(self._monat_combo)
         toolbar_layout.addWidget(self._laden_button)
         toolbar_layout.addStretch()
         toolbar_layout.addWidget(self._zeile_hinzufuegen_button)
@@ -56,6 +62,12 @@ class ZeiteintragWindow(QMainWindow):
         self._table.setShowGrid(True)
         self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self._table.setStyleSheet(
+            "QTableView::item:selected {"
+            "background-color: #fff9c4;"
+            "color: #000000;"
+            "}"
+        )
         self._table.horizontalHeader().setStretchLastSection(True)
         self._table.verticalHeader().setVisible(True)
 
@@ -68,13 +80,17 @@ class ZeiteintragWindow(QMainWindow):
         self._zeile_hinzufuegen_button.clicked.connect(self._on_zeile_hinzufuegen)
         self._zeile_loeschen_button.clicked.connect(self._on_zeile_loeschen)
         self._speichern_button.clicked.connect(self._on_speichern)
+        self._table.doubleClicked.connect(self._on_table_double_clicked)
 
     def _bind_view_model(self) -> None:
         self._view_model.status_changed.connect(self._status_label.setText)
         self._view_model.error_occurred.connect(self._show_error)
 
     def _on_laden(self) -> None:
-        self._view_model.lade_jahr(self._jahr_spin.value())
+        monat = self._monat_combo.currentData()
+        if monat is None:
+            monat = date.today().month
+        self._view_model.lade_zeitraum(self._jahr_spin.value(), int(monat))
 
     def _on_zeile_hinzufuegen(self) -> None:
         self._view_model.add_row()
@@ -95,6 +111,12 @@ class ZeiteintragWindow(QMainWindow):
 
     def _on_speichern(self) -> None:
         self._view_model.speichere_alle()
+
+    def _on_table_double_clicked(self, index) -> None:
+        if index.column() != 0:
+            return
+        datum_heute = date.today().strftime("%d.%m.%Y")
+        self._view_model.table_model.setData(index, datum_heute)
 
     def _show_error(self, message: str) -> None:
         QMessageBox.warning(self, "Fehler beim Speichern/Laden", message)
