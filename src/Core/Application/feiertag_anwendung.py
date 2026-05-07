@@ -4,7 +4,7 @@ from datetime import date
 from typing import Optional
 
 from Core.Domain.feiertag_service import FeiertagService
-from Core.Domain.models import Feiertag
+from Core.Domain.models_worktime import Feiertag
 
 
 class FeiertagAnwendung:

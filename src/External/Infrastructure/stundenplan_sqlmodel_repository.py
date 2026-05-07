@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from Core.Domain.models import Stundenplan
+from Core.Domain.models_worktime import Stundenplan
 from External.Infrastructure.sqlmodel_tables import StundenplanTable
 
 

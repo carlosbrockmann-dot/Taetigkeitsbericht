@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import time
 
-from .models import Stundenplan
+from .models_worktime import Stundenplan
 from .stundenplan_repository_interface import IStundenplanRepository
 
 

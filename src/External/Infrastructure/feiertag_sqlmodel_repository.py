@@ -6,7 +6,7 @@ from typing import Optional
 from sqlalchemy import extract
 from sqlmodel import Session, select
 
-from Core.Domain.models import Feiertag
+from Core.Domain.models_worktime import Feiertag
 from External.Infrastructure.sqlmodel_tables import FeiertagTable
 
 

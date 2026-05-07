@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Optional
 
-from Core.Domain.models import Stundenplan, Zeiteintrag
+from Core.Domain.models_worktime import Stundenplan, Zeiteintrag
 from Core.Domain.zeiteintrag_service import ZeiteintragService
 
 

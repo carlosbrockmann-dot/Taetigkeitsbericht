@@ -6,7 +6,7 @@ from typing import Optional
 from sqlalchemy import extract
 from sqlmodel import Session, select
 
-from Core.Domain.models import Zeiteintrag
+from Core.Domain.models_worktime import Zeiteintrag
 from External.Infrastructure.sqlmodel_tables import ZeiteintragTable
 
 

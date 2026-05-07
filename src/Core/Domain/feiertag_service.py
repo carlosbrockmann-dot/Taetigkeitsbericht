@@ -4,7 +4,7 @@ from datetime import date
 from typing import Optional
 
 from .feiertag_repository_interface import IFeiertagRepository
-from .models import Feiertag
+from .models_worktime import Feiertag
 
 
 class FeiertagService:

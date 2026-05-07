@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Optional, Protocol
 
-from .models import Zeiteintrag
+from .models_worktime import Zeiteintrag
 
 
 class IZeiteintragRepository(Protocol):
