@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import date, time
 from typing import Optional
 
-from .models_worktime import Zeiteintrag
-from .zeiteintrag_repository_interface import IZeiteintragRepository
+from ..models.models_worktime import Zeiteintrag
+from ..interfaces.zeiteintrag_repository_interface import IZeiteintragRepository
 
 
 class ZeiteintragService:

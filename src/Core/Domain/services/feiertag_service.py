@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import date
 from typing import Optional
 
-from .feiertag_repository_interface import IFeiertagRepository
-from .models_worktime import Feiertag
+from ..interfaces.feiertag_repository_interface import IFeiertagRepository
+from ..models.models_worktime import Feiertag
 
 
 class FeiertagService:

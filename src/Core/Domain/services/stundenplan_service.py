@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from datetime import time
 
-from .models_worktime import Stundenplan
-from .stundenplan_repository_interface import IStundenplanRepository
+from ..models.models_worktime import Stundenplan
+from ..interfaces.stundenplan_repository_interface import IStundenplanRepository
 
 
 class StundenplanService:

@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import date
 from typing import Optional
 
-from Core.Domain.feiertag_service import FeiertagService
-from Core.Domain.models_worktime import Feiertag
+from Core.Domain.services.feiertag_service import FeiertagService
+from Core.Domain.models.models_worktime import Feiertag
 
 
 class FeiertagAnwendung:

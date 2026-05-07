@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from .models_worktime import Stundenplan
+from ..models.models_worktime import Stundenplan
 
 
 class IStundenplanRepository(Protocol):

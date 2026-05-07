@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Optional, Protocol
 
-from .models_worktime import Feiertag
+from ..models.models_worktime import Feiertag
 
 
 class IFeiertagRepository(Protocol):

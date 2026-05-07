@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional, Protocol
 
-from .models_auth import Login, User
+from ..models.models_auth import Login, User
 
 
 class IAuthService(Protocol):

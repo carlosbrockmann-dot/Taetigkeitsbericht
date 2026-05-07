@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from Core.Domain.models_worktime import Stundenplan
-from Core.Domain.stundenplan_service import StundenplanService
+from Core.Domain.models.models_worktime import Stundenplan
+from Core.Domain.services.stundenplan_service import StundenplanService
 
 
 class StundenplanAnwendung:

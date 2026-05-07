@@ -6,11 +6,11 @@ import tomllib
 from typing import Optional
 from uuid import uuid4
 
-from .models_auth import Login, User
+from ..models.models_auth import Login, User
 
 
 def _lade_default_remote_login() -> tuple[User, str]:
-    config_path = Path(__file__).with_name("auth_config.toml")
+    config_path = Path(__file__).resolve().parent.parent / "auth_config.toml"
     with config_path.open("rb") as config_file:
         config = tomllib.load(config_file)
 
