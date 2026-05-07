@@ -3,13 +3,14 @@ from __future__ import annotations
 from datetime import date, time
 from typing import Optional
 
+from sqlalchemy import Column, String
 from sqlmodel import Field, SQLModel
 
 
 class ZeiteintragTable(SQLModel, table=True):
     __tablename__ = "zeiteintrag"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: str = Field(sa_column=Column(String(36), primary_key=True))
     datum: date
     uhrzeit_von: time
     uhrzeit_bis: time

@@ -14,6 +14,8 @@ class ZeiteintragService:
     def erfasse_zeiteintrag(self, eintrag: Zeiteintrag) -> Zeiteintrag:
         vorhandene_eintraege = self._repository.get_by_datum(eintrag.datum)
         for vorhandener_eintrag in vorhandene_eintraege:
+            if eintrag.id is not None and vorhandener_eintrag.id == eintrag.id:
+                continue
             if self._zeitraeume_ueberschneiden_sich(
                 eintrag.uhrzeit_von,
                 eintrag.uhrzeit_bis,
@@ -23,13 +25,15 @@ class ZeiteintragService:
                 raise ValueError(
                     "Der Zeitraum ueberschneidet sich mit einem bestehenden Zeiteintrag am selben Datum."
                 )
-        return self._repository.add(eintrag)
+        return self._repository.save(eintrag)
 
     def hole_zeiteintrag(self, datum: date) -> list[Zeiteintrag]:
         return self._repository.get_by_datum(datum)
 
-    def liste_zeiteintraege(self, jahr: Optional[int] = None) -> list[Zeiteintrag]:
-        return self._repository.list_all(jahr=jahr)
+    def liste_zeiteintraege(
+        self, jahr: Optional[int] = None, monat: Optional[int] = None
+    ) -> list[Zeiteintrag]:
+        return self._repository.list_all(jahr=jahr, monat=monat)
 
     def loesche_zeiteintrag(self, datum: date) -> bool:
         return self._repository.delete_by_datum(datum)

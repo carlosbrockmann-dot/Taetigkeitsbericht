@@ -38,8 +38,8 @@ class ZeiteintragAnwendung:
     def hole_fuer_datum(self, datum: date) -> list[Zeiteintrag]:
         return self._service.hole_zeiteintrag(datum)
 
-    def liste(self, jahr: Optional[int] = None) -> list[Zeiteintrag]:
-        return self._service.liste_zeiteintraege(jahr=jahr)
+    def liste(self, jahr: Optional[int] = None, monat: Optional[int] = None) -> list[Zeiteintrag]:
+        return self._service.liste_zeiteintraege(jahr=jahr, monat=monat)
 
     def loesche_fuer_datum(self, datum: date) -> bool:
         return self._service.loesche_zeiteintrag(datum)

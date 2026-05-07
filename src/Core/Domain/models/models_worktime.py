@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, time
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -31,6 +32,7 @@ class ArbeitszeitBasis(BaseModel):
 
 
 class Zeiteintrag(ArbeitszeitBasis):
+    id: Optional[UUID] = None
     datum: date
 
 

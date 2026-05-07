@@ -29,9 +29,10 @@ class ZeiteintragViewModel(QObject):
         self._table_model.remove_rows(row_indices)
 
     def lade_zeitraum(self, jahr: int, monat: int) -> None:
-        eintraege = self._anwendung.liste(jahr=jahr)
+        eintraege = self._anwendung.liste(jahr=jahr, monat=monat)
         rows = [
             ZeiteintragRow(
+                id=e.id,
                 datum=e.datum.strftime("%d.%m.%Y"),
                 uhrzeit_von=e.uhrzeit_von.strftime("%H:%M"),
                 uhrzeit_bis=e.uhrzeit_bis.strftime("%H:%M"),
@@ -40,21 +41,21 @@ class ZeiteintragViewModel(QObject):
                 anmerkung=e.anmerkung or "",
             )
             for e in eintraege
-            if e.datum.month == monat
         ]
         self._table_model.set_rows(rows)
         self.status_changed.emit(f"{len(rows)} Eintrag/Eintreage fuer {monat:02d}/{jahr} geladen.")
 
-    def speichere_alle(self) -> None:
+    def speichere_alle(self) -> bool:
         if not self._table_model.rows:
             self.error_occurred.emit("Es sind keine Zeilen zum Speichern vorhanden.")
-            return
+            return False
 
         erfolgreich = 0
         fehler: list[str] = []
         for zeilen_nummer, row in enumerate(self._table_model.rows, start=1):
             try:
                 eintrag = Zeiteintrag(
+                    id=row.id,
                     datum=self._parse_date(row.datum),
                     uhrzeit_von=self._parse_time(row.uhrzeit_von, "uhrzeit_von"),
                     uhrzeit_bis=self._parse_time(row.uhrzeit_bis, "uhrzeit_bis"),
@@ -62,7 +63,8 @@ class ZeiteintragViewModel(QObject):
                     unterbrechung_ende=self._parse_optional_time(row.unterbrechung_ende),
                     anmerkung=row.anmerkung or None,
                 )
-                self._anwendung.erfasse(eintrag)
+                gespeicherter_eintrag = self._anwendung.erfasse(eintrag)
+                row.id = gespeicherter_eintrag.id
                 erfolgreich += 1
             except Exception as exc:  # noqa: BLE001
                 fehler.append(f"Zeile {zeilen_nummer}: {exc}")
@@ -70,6 +72,7 @@ class ZeiteintragViewModel(QObject):
         if fehler:
             self.error_occurred.emit("\n".join(fehler))
         self.status_changed.emit(f"{erfolgreich} Zeile(n) gespeichert, {len(fehler)} Fehler.")
+        return not fehler
 
     @staticmethod
     def _parse_date(value: str) -> date:

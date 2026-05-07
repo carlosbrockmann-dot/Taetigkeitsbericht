@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from uuid import UUID
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PySide6.QtGui import QColor
 
 
 @dataclass
 class ZeiteintragRow:
+    id: UUID | None = None
     datum: str = ""
     uhrzeit_von: str = ""
     uhrzeit_bis: str = ""
@@ -36,6 +39,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
     def __init__(self) -> None:
         super().__init__()
         self._rows: list[ZeiteintragRow] = []
+        self._dirty_rows: set[int] = set()
 
     @property
     def rows(self) -> list[ZeiteintragRow]:
@@ -70,8 +74,14 @@ class ZeiteintragTableModel(QAbstractTableModel):
             return None
         return str(section + 1)
 
-    def data(self, index: QModelIndex, role: int = Qt.DisplayRole) -> str | None:
-        if not index.isValid() or role not in (Qt.DisplayRole, Qt.EditRole):
+    def data(self, index: QModelIndex, role: int = Qt.DisplayRole) -> str | QColor | None:
+        if not index.isValid():
+            return None
+        if role == Qt.ForegroundRole:
+            if index.row() in self._dirty_rows:
+                return QColor("#b71c1c")
+            return QColor("#000000")
+        if role not in (Qt.DisplayRole, Qt.EditRole):
             return None
         row = self._rows[index.row()]
         values = [
@@ -89,9 +99,9 @@ class ZeiteintragTableModel(QAbstractTableModel):
             return False
 
         row = self._rows[index.row()]
-        text = str(value).strip()
-        if index.column() in (1, 2, 3, 4):
-            text = self._normalize_hour_input(text)
+        text = str(value)
+        if index.column() != 5:
+            text = text.strip()
         if index.column() == 0:
             row.datum = text
         elif index.column() == 1:
@@ -109,15 +119,6 @@ class ZeiteintragTableModel(QAbstractTableModel):
 
         self.dataChanged.emit(index, index, [Qt.DisplayRole, Qt.EditRole])
         return True
-
-    @staticmethod
-    def _normalize_hour_input(text: str) -> str:
-        if not text.isdigit():
-            return text
-        hour = int(text)
-        if 0 <= hour <= 23:
-            return f"{hour:02d}:00"
-        return text
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
         if not index.isValid():
@@ -137,3 +138,16 @@ class ZeiteintragTableModel(QAbstractTableModel):
             self.beginRemoveRows(QModelIndex(), row_index, row_index)
             del self._rows[row_index]
             self.endRemoveRows()
+
+    def set_dirty_rows(self, dirty_rows: set[int]) -> None:
+        if self._dirty_rows == dirty_rows:
+            return
+        self._dirty_rows = set(dirty_rows)
+        if not self._rows:
+            return
+        top_left = self.index(0, 0)
+        bottom_right = self.index(len(self._rows) - 1, len(self.HEADERS) - 1)
+        self.dataChanged.emit(top_left, bottom_right, [Qt.ForegroundRole])
+
+    def is_row_dirty(self, row_index: int) -> bool:
+        return row_index in self._dirty_rows
