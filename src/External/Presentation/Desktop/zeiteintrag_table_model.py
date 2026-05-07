@@ -90,6 +90,8 @@ class ZeiteintragTableModel(QAbstractTableModel):
 
         row = self._rows[index.row()]
         text = str(value).strip()
+        if index.column() in (1, 2, 3, 4):
+            text = self._normalize_hour_input(text)
         if index.column() == 0:
             row.datum = text
         elif index.column() == 1:
@@ -107,6 +109,15 @@ class ZeiteintragTableModel(QAbstractTableModel):
 
         self.dataChanged.emit(index, index, [Qt.DisplayRole, Qt.EditRole])
         return True
+
+    @staticmethod
+    def _normalize_hour_input(text: str) -> str:
+        if not text.isdigit():
+            return text
+        hour = int(text)
+        if 0 <= hour <= 23:
+            return f"{hour:02d}:00"
+        return text
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
         if not index.isValid():
