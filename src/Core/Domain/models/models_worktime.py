@@ -44,3 +44,4 @@ class Stundenplan(ArbeitszeitBasis):
 class Feiertag(BaseModel):
     datum: date
     feiertagsname: str = Field(max_length=80, description="Name des Feiertags")
+    hinweis: Optional[str] = Field(default=None, max_length=80, description="Zusatzinfo, z. B. aus Feiertags-API")

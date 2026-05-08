@@ -10,6 +10,9 @@ class IFeiertagRepository(Protocol):
     def add(self, eintrag: Feiertag) -> Feiertag:
         ...
 
+    def update(self, eintrag: Feiertag) -> bool:
+        ...
+
     def get_by_datum(self, datum: date) -> list[Feiertag]:
         ...
 

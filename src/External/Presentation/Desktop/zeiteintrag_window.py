@@ -3,25 +3,28 @@ from __future__ import annotations
 from datetime import date, datetime
 from uuid import UUID
 
-from PySide6.QtCore import QPersistentModelIndex, Qt
-from PySide6.QtGui import QCloseEvent, QGuiApplication, QKeySequence, QPalette, QShortcut
+from PySide6.QtCore import QPersistentModelIndex, QRect, Qt
+from PySide6.QtGui import QCloseEvent, QColor, QGuiApplication, QIcon, QKeySequence, QPalette, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QComboBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMainWindow,
     QMessageBox,
     QPushButton,
-    QComboBox,
-    QLineEdit,
-    QStyledItemDelegate,
     QSpinBox,
+    QStyle,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
     QTableView,
     QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from External.Presentation.Desktop.feiertag_view import FeiertagView
 from External.Presentation.Desktop.stundenplan_view import StundenplanView
 from External.Presentation.Desktop.zeiteintrag_view_model import ZeiteintragViewModel
 
@@ -77,15 +80,82 @@ class LiveCommitDelegate(QStyledItemDelegate):
         super().setModelData(editor, model, index)
 
 
+class WochentagMitSternDelegate(LiveCommitDelegate):
+    """Wochentagskürzel links, Feiertags-Stern-Icon rechts in Spalte 0."""
+
+    def paint(self, painter, option, index):  # noqa: N802
+        if index.column() != 0:
+            super().paint(painter, option, index)
+            return
+
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+
+        model = index.model()
+        if model is not None and hasattr(model, "is_row_dirty") and model.is_row_dirty(index.row()):
+            opt.palette.setColor(QPalette.ColorRole.Text, QColor("#b71c1c"))
+            opt.palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#b71c1c"))
+
+        widget = option.widget
+        style = widget.style() if widget is not None else None
+
+        painter.save()
+        painter.setClipRect(option.rect)
+
+        if style is not None:
+            style.drawPrimitive(
+                QStyle.PrimitiveElement.PE_PanelItemViewItem,
+                opt,
+                painter,
+                widget,
+            )
+
+        text = index.data(Qt.ItemDataRole.DisplayRole)
+        text = "" if text is None else str(text)
+        icon = index.data(Qt.ItemDataRole.DecorationRole)
+
+        rand = 4
+        if isinstance(icon, QIcon) and not icon.isNull():
+            icon_breite = 14
+            icon_rect = QRect(
+                option.rect.right() - rand - icon_breite,
+                option.rect.center().y() - icon_breite // 2,
+                icon_breite,
+                icon_breite,
+            )
+            text_rect = QRect(
+                option.rect.left() + rand,
+                option.rect.top(),
+                icon_rect.left() - option.rect.left() - rand - 2,
+                option.rect.height(),
+            )
+        else:
+            text_rect = option.rect.adjusted(rand, 0, -rand, 0)
+            icon_rect = None
+
+        painter.setFont(option.font)
+        painter.setPen(opt.palette.color(QPalette.ColorRole.Text))
+        painter.drawText(
+            text_rect,
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+            text,
+        )
+        if icon_rect is not None:
+            icon.paint(painter, icon_rect, Qt.AlignmentFlag.AlignCenter)
+        painter.restore()
+
+
 class ZeiteintragWindow(QMainWindow):
     def __init__(
         self,
         view_model: ZeiteintragViewModel,
         stundenplan_view: StundenplanView,
+        feiertag_view: FeiertagView,
     ) -> None:
         super().__init__()
         self._view_model = view_model
         self._stundenplan_view = stundenplan_view
+        self._feiertag_view = feiertag_view
         self._has_unsaved_changes = False
         self._current_loaded_year: int | None = None
         self._current_loaded_month: int | None = None
@@ -129,6 +199,7 @@ class ZeiteintragWindow(QMainWindow):
         self._table = QTableView(self)
         self._table.setModel(self._view_model.table_model)
         self._table.setItemDelegate(LiveCommitDelegate(self._table))
+        self._table.setItemDelegateForColumn(0, WochentagMitSternDelegate(self._table))
         self._table.setAlternatingRowColors(True)
         self._table.setShowGrid(True)
         self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -151,6 +222,7 @@ class ZeiteintragWindow(QMainWindow):
         self._tab_widget = QTabWidget(self)
         self._tab_widget.addTab(zeiteintrag_widget, "Zeiteintraege")
         self._tab_widget.addTab(self._stundenplan_view, "Stundenplan")
+        self._tab_widget.addTab(self._feiertag_view, "Feiertage")
         self.setCentralWidget(self._tab_widget)
 
         self._laden_button.clicked.connect(self._on_laden)

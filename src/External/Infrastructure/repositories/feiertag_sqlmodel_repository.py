@@ -11,7 +11,11 @@ from External.Infrastructure.sqlmodel_tables import FeiertagTable
 
 
 def _row_to_domain(row: FeiertagTable) -> Feiertag:
-    return Feiertag(datum=row.datum, feiertagsname=row.feiertagsname)
+    return Feiertag(
+        datum=row.datum,
+        feiertagsname=row.feiertagsname,
+        hinweis=row.hinweis,
+    )
 
 
 class SqlFeiertagRepository:
@@ -19,11 +23,26 @@ class SqlFeiertagRepository:
         self._session = session
 
     def add(self, eintrag: Feiertag) -> Feiertag:
-        row = FeiertagTable(datum=eintrag.datum, feiertagsname=eintrag.feiertagsname)
+        row = FeiertagTable(
+            datum=eintrag.datum,
+            feiertagsname=eintrag.feiertagsname,
+            hinweis=eintrag.hinweis,
+        )
         self._session.add(row)
         self._session.commit()
         self._session.refresh(row)
         return _row_to_domain(row)
+
+    def update(self, eintrag: Feiertag) -> bool:
+        row = self._session.get(FeiertagTable, eintrag.datum)
+        if row is None:
+            return False
+        row.feiertagsname = eintrag.feiertagsname
+        row.hinweis = eintrag.hinweis
+        self._session.add(row)
+        self._session.commit()
+        self._session.refresh(row)
+        return True
 
     def get_by_datum(self, datum: date) -> list[Feiertag]:
         stmt = select(FeiertagTable).where(FeiertagTable.datum == datum)

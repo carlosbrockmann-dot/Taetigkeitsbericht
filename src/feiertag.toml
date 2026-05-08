@@ -1,4 +1,4 @@
-[google]
-url = "https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events"
+[feiertage_api]
+url = "https://feiertage-api.de/api/"
 bundesland = "Hessen"
-kalender_id_hessen = "de.he#holiday@group.v.calendar.google.com"
+bundesland_code = "HE"

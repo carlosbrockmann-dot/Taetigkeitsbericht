@@ -6,8 +6,10 @@ from uuid import UUID
 
 from PySide6.QtCore import QObject, Signal
 
+from Core.Application.feiertag_anwendung import FeiertagAnwendung
 from Core.Application.zeiteintrag_anwendung import ZeiteintragAnwendung
 from Core.Domain.models.models_worktime import Zeiteintrag
+from External.Presentation.Desktop.feiertag_registry import FeiertagRegistry
 from External.Presentation.Desktop.zeiteintrag_table_model import ZeiteintragRow, ZeiteintragTableModel
 
 
@@ -15,11 +17,21 @@ class ZeiteintragViewModel(QObject):
     status_changed = Signal(str)
     error_occurred = Signal(str)
 
-    def __init__(self, anwendung: ZeiteintragAnwendung) -> None:
+    def __init__(
+        self,
+        anwendung: ZeiteintragAnwendung,
+        feiertag_anwendung: FeiertagAnwendung,
+        feiertag_registry: FeiertagRegistry,
+    ) -> None:
         super().__init__()
         self._anwendung = anwendung
+        self._feiertag_anwendung = feiertag_anwendung
+        self._feiertag_registry = feiertag_registry
         self._table_model = ZeiteintragTableModel()
         self._zu_loeschende_ids: list[UUID] = []
+        self._geladenes_jahr: int | None = None
+        self._geladenes_monat: int | None = None
+        self._feiertag_registry.feiertage_geaendert.connect(self._auf_feiertage_geaendert)
 
     @property
     def table_model(self) -> ZeiteintragTableModel:
@@ -47,6 +59,9 @@ class ZeiteintragViewModel(QObject):
         self._table_model.remove_rows(row_indices)
 
     def lade_zeitraum(self, jahr: int, monat: int) -> None:
+        feiertage = self._feiertag_anwendung.liste(jahr=jahr)
+        self._feiertag_registry.aktualisiere_jahr(jahr, feiertage, benachrichtigen=False)
+
         eintraege = self._anwendung.liste(jahr=jahr, monat=monat)
         eintraege_nach_tag: dict[date, list[Zeiteintrag]] = {}
         for eintrag in eintraege:
@@ -63,10 +78,28 @@ class ZeiteintragViewModel(QObject):
             rows.append(ZeiteintragRow(datum=aktuelles_datum.strftime("%d.%m.%Y")))
 
         self._table_model.set_rows(rows)
+        self._table_model.set_feiertag_nach_datum(
+            self._feiertag_registry.snapshot_fuer_monat(jahr, monat)
+        )
+        self._geladenes_jahr = jahr
+        self._geladenes_monat = monat
         self._zu_loeschende_ids.clear()
         self.status_changed.emit(
             f"{len(rows)} Zeile(n) fuer {monat:02d}/{jahr} geladen ({len(eintraege)} aus Datenbank)."
         )
+
+    def _auf_feiertage_geaendert(self, jahr: int) -> None:
+        if self._geladenes_jahr is None or self._geladenes_monat is None:
+            return
+        if jahr != self._geladenes_jahr:
+            return
+        self._table_model.set_feiertag_nach_datum(
+            self._feiertag_registry.snapshot_fuer_monat(
+                self._geladenes_jahr,
+                self._geladenes_monat,
+            )
+        )
+        self._table_model.feiertag_darstellung_aktualisieren()
 
     def speichere_alle(self) -> bool:
         zeilen_zum_speichern = [

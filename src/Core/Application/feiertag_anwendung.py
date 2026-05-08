@@ -22,3 +22,6 @@ class FeiertagAnwendung:
 
     def loesche_fuer_datum(self, datum: date) -> bool:
         return self._service.loesche_feiertag(datum)
+
+    def lade_aus_api(self, jahr: int) -> tuple[int, int]:
+        return self._service.importiere_feiertage_aus_api(jahr=jahr)
