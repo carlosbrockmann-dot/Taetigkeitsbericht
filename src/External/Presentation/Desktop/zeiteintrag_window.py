@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
 from PySide6.QtCore import QPersistentModelIndex, Qt
@@ -359,11 +359,56 @@ class ZeiteintragWindow(QMainWindow):
     def _on_table_double_clicked(self, index) -> None:
         if index.column() != 1:
             return
-        vorhandener_wert = self._view_model.table_model.data(index)
-        if isinstance(vorhandener_wert, str) and vorhandener_wert.strip():
+        model = self._view_model.table_model
+        row_idx = index.row()
+        row = model.rows[row_idx]
+        datum_text = row.datum.strip()
+        if not datum_text:
+            datum_text = date.today().strftime("%d.%m.%Y")
+            model.setData(index, datum_text)
+
+        if row.uhrzeit_von.strip() or row.uhrzeit_bis.strip():
             return
-        datum_heute = date.today().strftime("%d.%m.%Y")
-        self._view_model.table_model.setData(index, datum_heute)
+
+        try:
+            datum = datetime.strptime(datum_text, "%d.%m.%Y").date()
+        except ValueError:
+            return
+
+        passende_stundenplan_zeilen = self._stundenplan_view.zeilen_fuer_wochentag(
+            datum.isoweekday()
+        )
+        if not passende_stundenplan_zeilen:
+            return
+
+        zeiteintrag_zeilen_am_tag = [
+            idx
+            for idx, zeile in enumerate(model.rows)
+            if zeile.datum.strip() == datum_text
+        ]
+        if row_idx not in zeiteintrag_zeilen_am_tag:
+            return
+
+        eintrags_index = zeiteintrag_zeilen_am_tag.index(row_idx)
+        if eintrags_index >= len(passende_stundenplan_zeilen):
+            return
+        stundenplan_zeile = passende_stundenplan_zeilen[eintrags_index]
+
+        feld_zu_spalte = {
+            "uhrzeit_von": 2,
+            "uhrzeit_bis": 3,
+            "unterbrechung_beginn": 4,
+            "unterbrechung_ende": 5,
+            "anmerkung": 7,
+        }
+        for feldname, spalte in feld_zu_spalte.items():
+            zielwert = getattr(row, feldname).strip()
+            if zielwert:
+                continue
+            quellwert = getattr(stundenplan_zeile, feldname).strip()
+            if not quellwert:
+                continue
+            model.setData(model.index(row_idx, spalte), quellwert)
 
     def _show_error(self, message: str) -> None:
         QMessageBox.warning(self, "Fehler beim Speichern/Laden", message)

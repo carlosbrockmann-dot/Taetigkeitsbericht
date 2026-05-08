@@ -114,6 +114,13 @@ class StundenplanView(QWidget):
     def has_unsaved_changes(self) -> bool:
         return self._has_unsaved_changes
 
+    def zeilen_fuer_wochentag(self, wochentag: int) -> list[StundenplanRow]:
+        return [
+            row
+            for row in self._view_model.table_model.rows
+            if row.wochentag == wochentag and (row.uhrzeit_von.strip() or row.uhrzeit_bis.strip())
+        ]
+
     def _build_ui(self) -> None:
         root_layout = QVBoxLayout(self)
         toolbar_layout = QHBoxLayout()
