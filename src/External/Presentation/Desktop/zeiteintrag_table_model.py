@@ -9,6 +9,12 @@ from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPointF, Qt
 from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPen, QPixmap, QPolygonF
 
 from Core.Domain.models.models_worktime import Feiertag
+from External.Presentation.Desktop.arbeitszeit_berechnung import (
+    minuten_als_hh_mm,
+    netto_arbeitsminuten,
+    parse_uhrzeit_minuten,
+)
+from External.Presentation.Desktop.stundenplan_registry import StundenplanRegistry
 
 
 def feiertag_stern_icon() -> QIcon:
@@ -60,6 +66,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
         "Pause Von",
         "Pause Bis",
         "Geleistet",
+        "Soll",
         "Kommentar",
     ]
     HEADER_TOOLTIPS = [
@@ -70,6 +77,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
         "Optionales Format: HH:MM, z. B. 12:00",
         "Optionales Format: HH:MM, z. B. 12:30",
         "Geleistete Zeit (Bis - Von - Pause), Format HH:MM",
+        "Soll aus Stundenplan (Wochentag + Von), Format HH:MM",
         "Freitext (max. 80 Zeichen)",
     ]
 
@@ -78,6 +86,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
         self._rows: list[ZeiteintragRow] = []
         self._dirty_rows: set[int] = set()
         self._feiertag_nach_datum: dict[date, Feiertag] = {}
+        self._stundenplan_registry: StundenplanRegistry | None = None
 
     @property
     def rows(self) -> list[ZeiteintragRow]:
@@ -167,6 +176,8 @@ class ZeiteintragTableModel(QAbstractTableModel):
                     row.unterbrechung_ende,
                 )
             case 7:
+                return self._soll_aus_stundenplan(row)
+            case 8:
                 return row.anmerkung
             case _:
                 return None
@@ -177,7 +188,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
 
         row = self._rows[index.row()]
         text = str(value)
-        if index.column() != 7:
+        if index.column() != 8:
             text = text.strip()
         if index.column() == 0:
             return False
@@ -191,9 +202,9 @@ class ZeiteintragTableModel(QAbstractTableModel):
             row.unterbrechung_beginn = text
         elif index.column() == 5:
             row.unterbrechung_ende = text
-        elif index.column() == 6:
+        elif index.column() in (6, 7):
             return False
-        elif index.column() == 7:
+        elif index.column() == 8:
             row.anmerkung = text
         else:
             return False
@@ -217,7 +228,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
 
         if index.column() in (2, 3, 4, 5):
             left = self.index(index.row(), index.column())
-            right = self.index(index.row(), 6)
+            right = self.index(index.row(), 7)
             self.dataChanged.emit(
                 left, right, [Qt.DisplayRole, Qt.EditRole, Qt.BackgroundRole]
             )
@@ -231,7 +242,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
         if not index.isValid():
             return Qt.ItemIsEnabled
-        if index.column() in (0, 6):
+        if index.column() in (0, 6, 7):
             return Qt.ItemIsSelectable | Qt.ItemIsEnabled
         return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
 
@@ -253,6 +264,16 @@ class ZeiteintragTableModel(QAbstractTableModel):
 
     def set_feiertag_nach_datum(self, mapping: dict[date, Feiertag]) -> None:
         self._feiertag_nach_datum = dict(mapping)
+
+    def set_stundenplan_registry(self, registry: StundenplanRegistry | None) -> None:
+        self._stundenplan_registry = registry
+
+    def stundenplan_soll_aktualisieren(self) -> None:
+        if not self._rows:
+            return
+        for r in range(len(self._rows)):
+            idx = self.index(r, 7)
+            self.dataChanged.emit(idx, idx, [Qt.DisplayRole])
 
     def feiertag_darstellung_aktualisieren(self) -> None:
         if not self._rows:
@@ -278,6 +299,32 @@ class ZeiteintragTableModel(QAbstractTableModel):
     def is_row_dirty(self, row_index: int) -> bool:
         return row_index in self._dirty_rows
 
+    def summen_geleistet_und_soll_minuten(self) -> tuple[int, int]:
+        """Summe Geleistet- und Soll-Minuten wie in den Spalten 6 und 7 angezeigt."""
+        geleistet = 0
+        soll = 0
+        for row in self._rows:
+            gz = self._calculate_geleistete_zeit(
+                row.uhrzeit_von,
+                row.uhrzeit_bis,
+                row.unterbrechung_beginn,
+                row.unterbrechung_ende,
+            )
+            if gz:
+                m = self._parse_minutes(gz)
+                if m is not None:
+                    geleistet += m
+            sz = self._soll_aus_stundenplan(row)
+            if sz:
+                m = self._parse_minutes(sz)
+                if m is not None:
+                    soll += m
+        return geleistet, soll
+
+    @staticmethod
+    def minuten_als_hh_mm(gesamt_minuten: int) -> str:
+        return minuten_als_hh_mm(gesamt_minuten)
+
     @staticmethod
     def _calculate_geleistete_zeit(
         uhrzeit_von: str,
@@ -285,42 +332,14 @@ class ZeiteintragTableModel(QAbstractTableModel):
         pause_von: str,
         pause_bis: str,
     ) -> str:
-        von_minuten = ZeiteintragTableModel._parse_minutes(uhrzeit_von)
-        bis_minuten = ZeiteintragTableModel._parse_minutes(uhrzeit_bis)
-        if von_minuten is None or bis_minuten is None:
+        netto = netto_arbeitsminuten(uhrzeit_von, uhrzeit_bis, pause_von, pause_bis)
+        if netto is None:
             return ""
-        delta = bis_minuten - von_minuten
-        if delta <= 0:
-            return ""
-        pause_von_minuten = ZeiteintragTableModel._parse_minutes(pause_von)
-        pause_bis_minuten = ZeiteintragTableModel._parse_minutes(pause_bis)
-        if pause_von_minuten is not None and pause_bis_minuten is not None:
-            pause_delta = pause_bis_minuten - pause_von_minuten
-            if pause_delta > 0:
-                delta -= pause_delta
-        if delta <= 0:
-            return ""
-        stunden, minuten = divmod(delta, 60)
-        return f"{stunden:02d}:{minuten:02d}"
+        return minuten_als_hh_mm(netto)
 
     @staticmethod
     def _parse_minutes(text: str) -> int | None:
-        cleaned = text.strip()
-        if not cleaned:
-            return None
-        if ":" not in cleaned:
-            return None
-        teile = cleaned.split(":", 1)
-        if len(teile) != 2:
-            return None
-        try:
-            stunden = int(teile[0])
-            minuten = int(teile[1])
-        except ValueError:
-            return None
-        if stunden < 0 or not 0 <= minuten < 60:
-            return None
-        return stunden * 60 + minuten
+        return parse_uhrzeit_minuten(text)
 
     @staticmethod
     def _weekday_from_date(datum_text: str) -> str:
@@ -343,6 +362,23 @@ class ZeiteintragTableModel(QAbstractTableModel):
         except ValueError:
             return ""
         return f"{datum.day:02d}"
+
+    def _soll_aus_stundenplan(self, row: ZeiteintragRow) -> str:
+        if self._stundenplan_registry is None:
+            return ""
+        datum_text = row.datum.strip()
+        if not datum_text:
+            return ""
+        try:
+            d = datetime.strptime(datum_text, "%d.%m.%Y").date()
+        except ValueError:
+            return ""
+        if self._feiertag_fuer_datumtext(datum_text) is not None:
+            return ""
+        wochentag = d.isoweekday()
+        if row.uhrzeit_von.strip():
+            return self._stundenplan_registry.soll_fuer(wochentag, row.uhrzeit_von)
+        return self._stundenplan_registry.gesamt_soll_fuer_wochentag(wochentag)
 
     def _feiertag_fuer_datumtext(self, datum_text: str) -> Feiertag | None:
         text = datum_text.strip()

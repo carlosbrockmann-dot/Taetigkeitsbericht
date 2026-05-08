@@ -7,9 +7,12 @@ from uuid import UUID
 from PySide6.QtCore import QObject, Signal
 
 from Core.Application.feiertag_anwendung import FeiertagAnwendung
+from Core.Application.stundenplan_anwendung import StundenplanAnwendung
 from Core.Application.zeiteintrag_anwendung import ZeiteintragAnwendung
 from Core.Domain.models.models_worktime import Zeiteintrag
 from External.Presentation.Desktop.feiertag_registry import FeiertagRegistry
+from External.Presentation.Desktop.stundenplan_registry import StundenplanRegistry
+from External.Presentation.Desktop.arbeitszeit_berechnung import zeit_aus_text
 from External.Presentation.Desktop.zeiteintrag_table_model import ZeiteintragRow, ZeiteintragTableModel
 
 
@@ -22,16 +25,22 @@ class ZeiteintragViewModel(QObject):
         anwendung: ZeiteintragAnwendung,
         feiertag_anwendung: FeiertagAnwendung,
         feiertag_registry: FeiertagRegistry,
+        stundenplan_anwendung: StundenplanAnwendung,
+        stundenplan_registry: StundenplanRegistry,
     ) -> None:
         super().__init__()
         self._anwendung = anwendung
         self._feiertag_anwendung = feiertag_anwendung
         self._feiertag_registry = feiertag_registry
+        self._stundenplan_anwendung = stundenplan_anwendung
+        self._stundenplan_registry = stundenplan_registry
         self._table_model = ZeiteintragTableModel()
+        self._table_model.set_stundenplan_registry(stundenplan_registry)
         self._zu_loeschende_ids: list[UUID] = []
         self._geladenes_jahr: int | None = None
         self._geladenes_monat: int | None = None
         self._feiertag_registry.feiertage_geaendert.connect(self._auf_feiertage_geaendert)
+        self._stundenplan_registry.stundenplan_geaendert.connect(self._auf_stundenplan_geaendert)
 
     @property
     def table_model(self) -> ZeiteintragTableModel:
@@ -61,6 +70,12 @@ class ZeiteintragViewModel(QObject):
     def lade_zeitraum(self, jahr: int, monat: int) -> None:
         feiertage = self._feiertag_anwendung.liste(jahr=jahr)
         self._feiertag_registry.aktualisiere_jahr(jahr, feiertage, benachrichtigen=False)
+
+        stundenplan_eintraege = self._stundenplan_anwendung.liste()
+        self._stundenplan_registry.aktualisiere_aus_domain(
+            stundenplan_eintraege,
+            benachrichtigen=False,
+        )
 
         eintraege = self._anwendung.liste(jahr=jahr, monat=monat)
         eintraege_nach_tag: dict[date, list[Zeiteintrag]] = {}
@@ -100,6 +115,9 @@ class ZeiteintragViewModel(QObject):
             )
         )
         self._table_model.feiertag_darstellung_aktualisieren()
+
+    def _auf_stundenplan_geaendert(self) -> None:
+        self._table_model.stundenplan_soll_aktualisieren()
 
     def speichere_alle(self) -> bool:
         zeilen_zum_speichern = [
@@ -161,14 +179,20 @@ class ZeiteintragViewModel(QObject):
         text = value.strip()
         if not text:
             raise ValueError(f"{feldname} darf nicht leer sein.")
-        return datetime.strptime(text, "%H:%M").time()
+        ergebnis = zeit_aus_text(text)
+        if ergebnis is None:
+            raise ValueError(f"{feldname}: erwartet HH:MM, z. B. 08:30.")
+        return ergebnis
 
     @staticmethod
     def _parse_optional_time(value: str) -> time | None:
         text = value.strip()
         if not text:
             return None
-        return datetime.strptime(text, "%H:%M").time()
+        ergebnis = zeit_aus_text(text)
+        if ergebnis is None:
+            raise ValueError("Pause: erwartet HH:MM, z. B. 12:00.")
+        return ergebnis
 
     @staticmethod
     def _map_to_row(eintrag: Zeiteintrag) -> ZeiteintragRow:

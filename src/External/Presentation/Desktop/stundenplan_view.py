@@ -178,6 +178,9 @@ class StundenplanView(QWidget):
         model.rowsInserted.connect(self._on_model_mutated)
         model.rowsRemoved.connect(self._on_model_mutated)
         model.modelReset.connect(self._on_model_mutated)
+        model.dataChanged.connect(self._auf_stundenplan_tabelle_inhalt)
+        model.rowsInserted.connect(self._auf_stundenplan_tabelle_inhalt)
+        model.rowsRemoved.connect(self._auf_stundenplan_tabelle_inhalt)
 
     def _lade_alle(self) -> None:
         self._suspend_dirty_tracking = True
@@ -248,6 +251,11 @@ class StundenplanView(QWidget):
         if self._suspend_dirty_tracking:
             return
         self._update_dirty_state()
+
+    def _auf_stundenplan_tabelle_inhalt(self, *_args) -> None:
+        if self._suspend_dirty_tracking:
+            return
+        self._view_model.synchronisiere_registry_mit_tabelle()
 
     def _capture_baseline(self) -> None:
         self._baseline_rows = self._current_rows_snapshot()

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime, time
+from datetime import time
 
 from PySide6.QtCore import QObject, Signal
 
 from Core.Application.stundenplan_anwendung import StundenplanAnwendung
 from Core.Domain.models.models_worktime import Stundenplan
+from External.Presentation.Desktop.arbeitszeit_berechnung import zeit_aus_text
+from External.Presentation.Desktop.stundenplan_registry import StundenplanRegistry
 from External.Presentation.Desktop.stundenplan_table_model import (
     StundenplanRow,
     StundenplanTableModel,
@@ -16,9 +18,14 @@ class StundenplanViewModel(QObject):
     status_changed = Signal(str)
     error_occurred = Signal(str)
 
-    def __init__(self, anwendung: StundenplanAnwendung) -> None:
+    def __init__(
+        self,
+        anwendung: StundenplanAnwendung,
+        stundenplan_registry: StundenplanRegistry,
+    ) -> None:
         super().__init__()
         self._anwendung = anwendung
+        self._stundenplan_registry = stundenplan_registry
         self._table_model = StundenplanTableModel()
         self._zu_loeschende_ids: list[int] = []
 
@@ -35,8 +42,15 @@ class StundenplanViewModel(QObject):
         rows = [self._map_to_row(eintrag) for eintrag in eintraege]
         self._table_model.set_rows(rows)
         self._zu_loeschende_ids.clear()
+        self._stundenplan_registry.aktualisiere_aus_zeilen(rows, benachrichtigen=True)
         self.status_changed.emit(
             f"{len(rows)} Stundenplan-Eintrag/-eintraege geladen."
+        )
+
+    def synchronisiere_registry_mit_tabelle(self) -> None:
+        self._stundenplan_registry.aktualisiere_aus_zeilen(
+            self._table_model.rows,
+            benachrichtigen=True,
         )
 
     def add_row(self, position: int | None = None, wochentag: int = 1) -> int:
@@ -126,14 +140,20 @@ class StundenplanViewModel(QObject):
         text = value.strip()
         if not text:
             raise ValueError(f"{feldname} darf nicht leer sein.")
-        return datetime.strptime(text, "%H:%M").time()
+        ergebnis = zeit_aus_text(text)
+        if ergebnis is None:
+            raise ValueError(f"{feldname}: erwartet HH:MM, z. B. 08:30.")
+        return ergebnis
 
     @staticmethod
     def _parse_optional_time(value: str) -> time | None:
         text = value.strip()
         if not text:
             return None
-        return datetime.strptime(text, "%H:%M").time()
+        ergebnis = zeit_aus_text(text)
+        if ergebnis is None:
+            raise ValueError("Pause: erwartet HH:MM, z. B. 12:00.")
+        return ergebnis
 
     @staticmethod
     def _map_to_row(eintrag: Stundenplan) -> StundenplanRow:

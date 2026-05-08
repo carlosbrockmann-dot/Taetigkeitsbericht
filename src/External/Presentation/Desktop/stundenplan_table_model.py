@@ -5,6 +5,12 @@ from dataclasses import dataclass
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 from PySide6.QtGui import QColor
 
+from External.Presentation.Desktop.arbeitszeit_berechnung import (
+    minuten_als_hh_mm,
+    netto_arbeitsminuten,
+    parse_uhrzeit_minuten,
+)
+
 
 WOCHENTAG_LABELS: list[tuple[int, str]] = [
     (1, "Mo"),
@@ -239,42 +245,14 @@ class StundenplanTableModel(QAbstractTableModel):
         pause_von: str,
         pause_bis: str,
     ) -> str:
-        von_minuten = StundenplanTableModel._parse_minutes(uhrzeit_von)
-        bis_minuten = StundenplanTableModel._parse_minutes(uhrzeit_bis)
-        if von_minuten is None or bis_minuten is None:
+        netto = netto_arbeitsminuten(uhrzeit_von, uhrzeit_bis, pause_von, pause_bis)
+        if netto is None:
             return ""
-        delta = bis_minuten - von_minuten
-        if delta <= 0:
-            return ""
-        pause_von_minuten = StundenplanTableModel._parse_minutes(pause_von)
-        pause_bis_minuten = StundenplanTableModel._parse_minutes(pause_bis)
-        if pause_von_minuten is not None and pause_bis_minuten is not None:
-            pause_delta = pause_bis_minuten - pause_von_minuten
-            if pause_delta > 0:
-                delta -= pause_delta
-        if delta <= 0:
-            return ""
-        stunden, minuten = divmod(delta, 60)
-        return f"{stunden:02d}:{minuten:02d}"
+        return minuten_als_hh_mm(netto)
 
     @staticmethod
     def _parse_minutes(text: str) -> int | None:
-        cleaned = text.strip()
-        if not cleaned:
-            return None
-        if ":" not in cleaned:
-            return None
-        teile = cleaned.split(":", 1)
-        if len(teile) != 2:
-            return None
-        try:
-            stunden = int(teile[0])
-            minuten = int(teile[1])
-        except ValueError:
-            return None
-        if stunden < 0 or not 0 <= minuten < 60:
-            return None
-        return stunden * 60 + minuten
+        return parse_uhrzeit_minuten(text)
 
 
 def _label_for_wochentag(wochentag: int) -> str:

@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 
 from External.Presentation.Desktop.feiertag_view import FeiertagView
 from External.Presentation.Desktop.stundenplan_view import StundenplanView
+from External.Presentation.Desktop.zeiteintrag_table_model import ZeiteintragTableModel
 from External.Presentation.Desktop.zeiteintrag_view_model import ZeiteintragViewModel
 
 
@@ -68,7 +69,7 @@ class LiveCommitDelegate(QStyledItemDelegate):
     def setModelData(self, editor, model, index):  # noqa: N802
         if isinstance(editor, QLineEdit):
             text = editor.text()
-            if index.column() != 7:
+            if index.column() != 8:
                 text = text.strip()
             is_live_commit = bool(editor.property("_live_commit"))
             if not is_live_commit and index.column() in (2, 3, 4, 5) and text.isdigit():
@@ -187,6 +188,7 @@ class ZeiteintragWindow(QMainWindow):
         self._zeile_loeschen_button = QPushButton("Markierte Zeile(n) loeschen", self)
         self._speichern_button = QPushButton("Alle Zeilen speichern", self)
         self._status_label = QLabel("Bereit.", self)
+        self._summen_label = QLabel("", self)
 
         toolbar_layout.addWidget(self._jahr_spin)
         toolbar_layout.addWidget(self._monat_combo)
@@ -213,11 +215,15 @@ class ZeiteintragWindow(QMainWindow):
         horizontal_header.setStretchLastSection(True)
         horizontal_header.resizeSection(0, 50)
         horizontal_header.resizeSection(6, 80)
+        horizontal_header.resizeSection(7, 72)
         self._table.verticalHeader().setVisible(True)
 
         root_layout.addLayout(toolbar_layout)
         root_layout.addWidget(self._table)
-        root_layout.addWidget(self._status_label)
+        fuss_layout = QHBoxLayout()
+        fuss_layout.addWidget(self._status_label, 1)
+        fuss_layout.addWidget(self._summen_label)
+        root_layout.addLayout(fuss_layout)
 
         self._tab_widget = QTabWidget(self)
         self._tab_widget.addTab(zeiteintrag_widget, "Zeiteintraege")
@@ -248,6 +254,14 @@ class ZeiteintragWindow(QMainWindow):
         model.rowsInserted.connect(self._on_model_mutated)
         model.rowsRemoved.connect(self._on_model_mutated)
         model.modelReset.connect(self._on_model_mutated)
+        self._aktualisiere_summen_anzeige()
+
+    def _aktualisiere_summen_anzeige(self) -> None:
+        model = self._view_model.table_model
+        g_min, s_min = model.summen_geleistet_und_soll_minuten()
+        g_txt = ZeiteintragTableModel.minuten_als_hh_mm(g_min)
+        s_txt = ZeiteintragTableModel.minuten_als_hh_mm(s_min)
+        self._summen_label.setText(f"Geleistet: {g_txt}   Soll: {s_txt}")
 
     def _on_laden(self) -> None:
         self._load_selected_period()
@@ -471,7 +485,7 @@ class ZeiteintragWindow(QMainWindow):
             "uhrzeit_bis": 3,
             "unterbrechung_beginn": 4,
             "unterbrechung_ende": 5,
-            "anmerkung": 7,
+            "anmerkung": 8,
         }
         for feldname, spalte in feld_zu_spalte.items():
             zielwert = getattr(row, feldname).strip()
@@ -486,6 +500,7 @@ class ZeiteintragWindow(QMainWindow):
         QMessageBox.warning(self, "Fehler beim Speichern/Laden", message)
 
     def _on_model_mutated(self, *_args) -> None:
+        self._aktualisiere_summen_anzeige()
         if self._suspend_dirty_tracking:
             return
         self._update_dirty_state()
