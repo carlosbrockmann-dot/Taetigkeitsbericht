@@ -27,7 +27,7 @@ class LiveCommitDelegate(QStyledItemDelegate):
     def createEditor(self, parent, option, index):  # noqa: N802
         editor = super().createEditor(parent, option, index)
         if isinstance(editor, QLineEdit):
-            editor.textEdited.connect(lambda _text, e=editor: self._commit_live(e))
+            editor.editingFinished.connect(lambda e=editor: self._commit_live(e))
         return editor
 
     def paint(self, painter, option, index):  # noqa: N802
@@ -221,7 +221,29 @@ class ZeiteintragWindow(QMainWindow):
         self._view_model.table_model.set_dirty_rows(set())
 
     def _on_zeile_hinzufuegen(self) -> None:
-        self._view_model.add_row()
+        selection_model = self._table.selectionModel()
+        position: int | None = None
+        datum = ""
+        if selection_model is not None:
+            selected_rows = [index.row() for index in selection_model.selectedRows()]
+            if not selected_rows:
+                current_index = selection_model.currentIndex()
+                if current_index.isValid():
+                    selected_rows = [current_index.row()]
+            if selected_rows:
+                anchor_row = max(selected_rows)
+                position = anchor_row + 1
+                model_rows = self._view_model.table_model.rows
+                if 0 <= anchor_row < len(model_rows):
+                    datum = model_rows[anchor_row].datum
+
+        new_row_index = self._view_model.add_row(position=position, datum=datum)
+
+        if selection_model is not None:
+            new_index = self._view_model.table_model.index(new_row_index, 0)
+            selection_model.clearSelection()
+            self._table.setCurrentIndex(new_index)
+            self._table.scrollTo(new_index)
 
     def _on_zeile_loeschen(self) -> None:
         selection_model = self._table.selectionModel()
@@ -245,6 +267,9 @@ class ZeiteintragWindow(QMainWindow):
 
     def _on_table_double_clicked(self, index) -> None:
         if index.column() != 0:
+            return
+        vorhandener_wert = self._view_model.table_model.data(index)
+        if isinstance(vorhandener_wert, str) and vorhandener_wert.strip():
             return
         datum_heute = date.today().strftime("%d.%m.%Y")
         self._view_model.table_model.setData(index, datum_heute)

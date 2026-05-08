@@ -92,7 +92,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
         if role == Qt.BackgroundRole:
             if self._is_weekend_date(row.datum):
                 return QColor("#eeeeee")
-            return None
+            return QColor("#ffffff")
         if role == Qt.ForegroundRole:
             if index.row() in self._dirty_rows:
                 return QColor("#b71c1c")
@@ -161,11 +161,13 @@ class ZeiteintragTableModel(QAbstractTableModel):
             return Qt.ItemIsSelectable | Qt.ItemIsEnabled
         return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
 
-    def add_empty_row(self) -> None:
-        position = len(self._rows)
+    def add_empty_row(self, position: int | None = None, datum: str = "") -> int:
+        if position is None or position < 0 or position > len(self._rows):
+            position = len(self._rows)
         self.beginInsertRows(QModelIndex(), position, position)
-        self._rows.append(ZeiteintragRow())
+        self._rows.insert(position, ZeiteintragRow(datum=datum))
         self.endInsertRows()
+        return position
 
     def remove_rows(self, row_indices: list[int]) -> None:
         for row_index in sorted(set(row_indices), reverse=True):

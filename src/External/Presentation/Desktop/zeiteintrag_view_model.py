@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from calendar import monthrange
 from datetime import date, datetime, time
 
 from PySide6.QtCore import QObject, Signal
@@ -22,28 +23,32 @@ class ZeiteintragViewModel(QObject):
     def table_model(self) -> ZeiteintragTableModel:
         return self._table_model
 
-    def add_row(self) -> None:
-        self._table_model.add_empty_row()
+    def add_row(self, position: int | None = None, datum: str = "") -> int:
+        return self._table_model.add_empty_row(position=position, datum=datum)
 
     def remove_rows(self, row_indices: list[int]) -> None:
         self._table_model.remove_rows(row_indices)
 
     def lade_zeitraum(self, jahr: int, monat: int) -> None:
         eintraege = self._anwendung.liste(jahr=jahr, monat=monat)
-        rows = [
-            ZeiteintragRow(
-                id=e.id,
-                datum=e.datum.strftime("%d.%m.%Y"),
-                uhrzeit_von=e.uhrzeit_von.strftime("%H:%M"),
-                uhrzeit_bis=e.uhrzeit_bis.strftime("%H:%M"),
-                unterbrechung_beginn=e.unterbrechung_beginn.strftime("%H:%M") if e.unterbrechung_beginn else "",
-                unterbrechung_ende=e.unterbrechung_ende.strftime("%H:%M") if e.unterbrechung_ende else "",
-                anmerkung=e.anmerkung or "",
-            )
-            for e in eintraege
-        ]
+        eintraege_nach_tag: dict[date, list[Zeiteintrag]] = {}
+        for eintrag in eintraege:
+            eintraege_nach_tag.setdefault(eintrag.datum, []).append(eintrag)
+
+        tage_im_monat = monthrange(jahr, monat)[1]
+        rows: list[ZeiteintragRow] = []
+        for tag in range(1, tage_im_monat + 1):
+            aktuelles_datum = date(jahr, monat, tag)
+            tages_eintraege = eintraege_nach_tag.get(aktuelles_datum, [])
+            if tages_eintraege:
+                rows.extend(self._map_to_row(eintrag) for eintrag in tages_eintraege)
+                continue
+            rows.append(ZeiteintragRow(datum=aktuelles_datum.strftime("%d.%m.%Y")))
+
         self._table_model.set_rows(rows)
-        self.status_changed.emit(f"{len(rows)} Eintrag/Eintreage fuer {monat:02d}/{jahr} geladen.")
+        self.status_changed.emit(
+            f"{len(rows)} Zeile(n) fuer {monat:02d}/{jahr} geladen ({len(eintraege)} aus Datenbank)."
+        )
 
     def speichere_alle(self) -> bool:
         if not self._table_model.rows:
@@ -102,3 +107,17 @@ class ZeiteintragViewModel(QObject):
         if not text:
             return None
         return datetime.strptime(text, "%H:%M").time()
+
+    @staticmethod
+    def _map_to_row(eintrag: Zeiteintrag) -> ZeiteintragRow:
+        return ZeiteintragRow(
+            id=eintrag.id,
+            datum=eintrag.datum.strftime("%d.%m.%Y"),
+            uhrzeit_von=eintrag.uhrzeit_von.strftime("%H:%M"),
+            uhrzeit_bis=eintrag.uhrzeit_bis.strftime("%H:%M"),
+            unterbrechung_beginn=eintrag.unterbrechung_beginn.strftime("%H:%M")
+            if eintrag.unterbrechung_beginn
+            else "",
+            unterbrechung_ende=eintrag.unterbrechung_ende.strftime("%H:%M") if eintrag.unterbrechung_ende else "",
+            anmerkung=eintrag.anmerkung or "",
+        )
