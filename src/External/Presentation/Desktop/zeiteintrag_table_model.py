@@ -21,21 +21,23 @@ class ZeiteintragRow:
 
 class ZeiteintragTableModel(QAbstractTableModel):
     HEADERS = [
+        "Tag",
         "Datum",
-        "Wochentag",
         "Von",
         "Bis",
         "Pause Von",
         "Pause Bis",
+        "Geleistet",
         "Kommentar",
     ]
     HEADER_TOOLTIPS = [
-        "Erwartetes Format: DD.MM.YYYY, z. B. 07.05.2026",
         "Wird automatisch aus dem Datum ermittelt",
+        "Erwartetes Format: DD.MM.YYYY, z. B. 07.05.2026",
         "Erwartetes Format: HH:MM, z. B. 08:30",
         "Erwartetes Format: HH:MM, z. B. 17:00",
         "Optionales Format: HH:MM, z. B. 12:00",
         "Optionales Format: HH:MM, z. B. 12:30",
+        "Geleistete Zeit (Bis - Von - Pause), Format HH:MM",
         "Freitext (max. 80 Zeichen)",
     ]
 
@@ -101,9 +103,9 @@ class ZeiteintragTableModel(QAbstractTableModel):
             return None
         match index.column():
             case 0:
-                return row.datum
-            case 1:
                 return self._weekday_from_date(row.datum)
+            case 1:
+                return row.datum
             case 2:
                 return row.uhrzeit_von
             case 3:
@@ -113,6 +115,13 @@ class ZeiteintragTableModel(QAbstractTableModel):
             case 5:
                 return row.unterbrechung_ende
             case 6:
+                return self._calculate_geleistete_zeit(
+                    row.uhrzeit_von,
+                    row.uhrzeit_bis,
+                    row.unterbrechung_beginn,
+                    row.unterbrechung_ende,
+                )
+            case 7:
                 return row.anmerkung
             case _:
                 return None
@@ -123,12 +132,12 @@ class ZeiteintragTableModel(QAbstractTableModel):
 
         row = self._rows[index.row()]
         text = str(value)
-        if index.column() != 6:
+        if index.column() != 7:
             text = text.strip()
         if index.column() == 0:
-            row.datum = text
-        elif index.column() == 1:
             return False
+        elif index.column() == 1:
+            row.datum = text
         elif index.column() == 2:
             row.uhrzeit_von = text
         elif index.column() == 3:
@@ -138,11 +147,13 @@ class ZeiteintragTableModel(QAbstractTableModel):
         elif index.column() == 5:
             row.unterbrechung_ende = text
         elif index.column() == 6:
+            return False
+        elif index.column() == 7:
             row.anmerkung = text
         else:
             return False
 
-        if index.column() == 0:
+        if index.column() == 1:
             left = self.index(index.row(), 0)
             right = self.index(index.row(), len(self.HEADERS) - 1)
             self.dataChanged.emit(
@@ -151,13 +162,21 @@ class ZeiteintragTableModel(QAbstractTableModel):
             self.headerDataChanged.emit(Qt.Vertical, index.row(), index.row())
             return True
 
+        if index.column() in (2, 3, 4, 5):
+            left = self.index(index.row(), index.column())
+            right = self.index(index.row(), 6)
+            self.dataChanged.emit(
+                left, right, [Qt.DisplayRole, Qt.EditRole, Qt.BackgroundRole]
+            )
+            return True
+
         self.dataChanged.emit(index, index, [Qt.DisplayRole, Qt.EditRole, Qt.BackgroundRole])
         return True
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
         if not index.isValid():
             return Qt.ItemIsEnabled
-        if index.column() == 1:
+        if index.column() in (0, 6):
             return Qt.ItemIsSelectable | Qt.ItemIsEnabled
         return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
 
@@ -189,6 +208,50 @@ class ZeiteintragTableModel(QAbstractTableModel):
 
     def is_row_dirty(self, row_index: int) -> bool:
         return row_index in self._dirty_rows
+
+    @staticmethod
+    def _calculate_geleistete_zeit(
+        uhrzeit_von: str,
+        uhrzeit_bis: str,
+        pause_von: str,
+        pause_bis: str,
+    ) -> str:
+        von_minuten = ZeiteintragTableModel._parse_minutes(uhrzeit_von)
+        bis_minuten = ZeiteintragTableModel._parse_minutes(uhrzeit_bis)
+        if von_minuten is None or bis_minuten is None:
+            return ""
+        delta = bis_minuten - von_minuten
+        if delta <= 0:
+            return ""
+        pause_von_minuten = ZeiteintragTableModel._parse_minutes(pause_von)
+        pause_bis_minuten = ZeiteintragTableModel._parse_minutes(pause_bis)
+        if pause_von_minuten is not None and pause_bis_minuten is not None:
+            pause_delta = pause_bis_minuten - pause_von_minuten
+            if pause_delta > 0:
+                delta -= pause_delta
+        if delta <= 0:
+            return ""
+        stunden, minuten = divmod(delta, 60)
+        return f"{stunden:02d}:{minuten:02d}"
+
+    @staticmethod
+    def _parse_minutes(text: str) -> int | None:
+        cleaned = text.strip()
+        if not cleaned:
+            return None
+        if ":" not in cleaned:
+            return None
+        teile = cleaned.split(":", 1)
+        if len(teile) != 2:
+            return None
+        try:
+            stunden = int(teile[0])
+            minuten = int(teile[1])
+        except ValueError:
+            return None
+        if stunden < 0 or not 0 <= minuten < 60:
+            return None
+        return stunden * 60 + minuten
 
     @staticmethod
     def _weekday_from_date(datum_text: str) -> str:

@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import date
 from uuid import UUID
 
-from PySide6.QtGui import QCloseEvent, QPalette
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QCloseEvent, QGuiApplication, QKeySequence, QPalette, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
@@ -48,7 +49,7 @@ class LiveCommitDelegate(QStyledItemDelegate):
     def setModelData(self, editor, model, index):  # noqa: N802
         if isinstance(editor, QLineEdit):
             text = editor.text()
-            if index.column() != 6:
+            if index.column() != 7:
                 text = text.strip()
             is_live_commit = bool(editor.property("_live_commit"))
             if not is_live_commit and index.column() in (2, 3, 4, 5) and text.isdigit():
@@ -116,7 +117,10 @@ class ZeiteintragWindow(QMainWindow):
             "background-color: #fff9c4;"
             "}"
         )
-        self._table.horizontalHeader().setStretchLastSection(True)
+        horizontal_header = self._table.horizontalHeader()
+        horizontal_header.setStretchLastSection(True)
+        horizontal_header.resizeSection(0, 50)
+        horizontal_header.resizeSection(6, 80)
         self._table.verticalHeader().setVisible(True)
 
         root_layout.addLayout(toolbar_layout)
@@ -131,6 +135,13 @@ class ZeiteintragWindow(QMainWindow):
         self._table.doubleClicked.connect(self._on_table_double_clicked)
         self._jahr_spin.valueChanged.connect(self._on_period_changed)
         self._monat_combo.currentIndexChanged.connect(self._on_period_changed)
+
+        copy_shortcut = QShortcut(QKeySequence.Copy, self._table)
+        copy_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        copy_shortcut.activated.connect(self._kopiere_markierte_zellen_in_zwischenablage)
+        selection_model = self._table.selectionModel()
+        if selection_model is not None:
+            selection_model.selectionChanged.connect(self._on_selection_changed)
 
     def _bind_view_model(self) -> None:
         self._view_model.status_changed.connect(self._status_label.setText)
@@ -240,7 +251,7 @@ class ZeiteintragWindow(QMainWindow):
         new_row_index = self._view_model.add_row(position=position, datum=datum)
 
         if selection_model is not None:
-            new_index = self._view_model.table_model.index(new_row_index, 0)
+            new_index = self._view_model.table_model.index(new_row_index, 1)
             selection_model.clearSelection()
             self._table.setCurrentIndex(new_index)
             self._table.scrollTo(new_index)
@@ -265,8 +276,45 @@ class ZeiteintragWindow(QMainWindow):
             self._has_unsaved_changes = False
             self._view_model.table_model.set_dirty_rows(set())
 
+    def _on_selection_changed(self, *_args) -> None:
+        self._kopiere_markierte_zellen_in_zwischenablage(silent=True)
+
+    def _kopiere_markierte_zellen_in_zwischenablage(self, silent: bool = False) -> None:
+        selection_model = self._table.selectionModel()
+        if selection_model is None:
+            return
+        indexes = [index for index in selection_model.selectedIndexes() if index.isValid()]
+        if not indexes:
+            return
+
+        indexes.sort(key=lambda idx: (idx.row(), idx.column()))
+        model = self._view_model.table_model
+        zeilen_texte: list[str] = []
+        current_row = indexes[0].row()
+        current_cells: list[str] = []
+        for idx in indexes:
+            if idx.row() != current_row:
+                zeilen_texte.append("\t".join(current_cells))
+                current_cells = []
+                current_row = idx.row()
+            wert = model.data(idx, Qt.DisplayRole)
+            current_cells.append("" if wert is None else str(wert))
+        zeilen_texte.append("\t".join(current_cells))
+
+        text = "\n".join(zeilen_texte)
+        clipboard = QGuiApplication.clipboard()
+        if clipboard is None:
+            return
+        clipboard.setText(text)
+
+        if not silent:
+            zeilen_anzahl = len(zeilen_texte)
+            self._status_label.setText(
+                f"{zeilen_anzahl} Zeile(n) in die Zwischenablage kopiert."
+            )
+
     def _on_table_double_clicked(self, index) -> None:
-        if index.column() != 0:
+        if index.column() != 1:
             return
         vorhandener_wert = self._view_model.table_model.data(index)
         if isinstance(vorhandener_wert, str) and vorhandener_wert.strip():
