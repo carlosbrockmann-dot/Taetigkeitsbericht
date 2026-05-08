@@ -48,10 +48,10 @@ class LiveCommitDelegate(QStyledItemDelegate):
     def setModelData(self, editor, model, index):  # noqa: N802
         if isinstance(editor, QLineEdit):
             text = editor.text()
-            if index.column() != 5:
+            if index.column() != 6:
                 text = text.strip()
             is_live_commit = bool(editor.property("_live_commit"))
-            if not is_live_commit and index.column() in (1, 2, 3, 4) and text.isdigit():
+            if not is_live_commit and index.column() in (2, 3, 4, 5) and text.isdigit():
                 hour = int(text)
                 if 0 <= hour <= 23:
                     text = f"{hour:02d}:00"

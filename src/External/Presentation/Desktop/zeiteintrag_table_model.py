@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
@@ -21,6 +22,7 @@ class ZeiteintragRow:
 class ZeiteintragTableModel(QAbstractTableModel):
     HEADERS = [
         "Datum",
+        "Wochentag",
         "Von",
         "Bis",
         "Pause Von",
@@ -29,6 +31,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
     ]
     HEADER_TOOLTIPS = [
         "Erwartetes Format: DD.MM.YYYY, z. B. 07.05.2026",
+        "Wird automatisch aus dem Datum ermittelt",
         "Erwartetes Format: HH:MM, z. B. 08:30",
         "Erwartetes Format: HH:MM, z. B. 17:00",
         "Optionales Format: HH:MM, z. B. 12:00",
@@ -63,19 +66,32 @@ class ZeiteintragTableModel(QAbstractTableModel):
     def headerData(  # noqa: N802
         self, section: int, orientation: Qt.Orientation, role: int = Qt.DisplayRole
     ) -> str | None:
-        if section < 0 or section >= len(self.HEADERS):
+        if section < 0:
             return None
 
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            if section >= len(self.HEADERS):
+                return None
             return self.HEADERS[section]
         if orientation == Qt.Horizontal and role == Qt.ToolTipRole:
+            if section >= len(self.HEADER_TOOLTIPS):
+                return None
             return self.HEADER_TOOLTIPS[section]
+        if orientation == Qt.Vertical and role == Qt.DisplayRole:
+            if section >= len(self._rows):
+                return None
+            return self._day_of_month_from_date(self._rows[section].datum)
         if role != Qt.DisplayRole:
             return None
-        return str(section + 1)
+        return None
 
     def data(self, index: QModelIndex, role: int = Qt.DisplayRole) -> str | QColor | None:
         if not index.isValid():
+            return None
+        row = self._rows[index.row()]
+        if role == Qt.BackgroundRole:
+            if self._is_weekend_date(row.datum):
+                return QColor("#eeeeee")
             return None
         if role == Qt.ForegroundRole:
             if index.row() in self._dirty_rows:
@@ -83,16 +99,23 @@ class ZeiteintragTableModel(QAbstractTableModel):
             return QColor("#000000")
         if role not in (Qt.DisplayRole, Qt.EditRole):
             return None
-        row = self._rows[index.row()]
-        values = [
-            row.datum,
-            row.uhrzeit_von,
-            row.uhrzeit_bis,
-            row.unterbrechung_beginn,
-            row.unterbrechung_ende,
-            row.anmerkung,
-        ]
-        return values[index.column()]
+        match index.column():
+            case 0:
+                return row.datum
+            case 1:
+                return self._weekday_from_date(row.datum)
+            case 2:
+                return row.uhrzeit_von
+            case 3:
+                return row.uhrzeit_bis
+            case 4:
+                return row.unterbrechung_beginn
+            case 5:
+                return row.unterbrechung_ende
+            case 6:
+                return row.anmerkung
+            case _:
+                return None
 
     def setData(self, index: QModelIndex, value: object, role: int = Qt.EditRole) -> bool:  # noqa: N802
         if not index.isValid() or role != Qt.EditRole:
@@ -100,29 +123,42 @@ class ZeiteintragTableModel(QAbstractTableModel):
 
         row = self._rows[index.row()]
         text = str(value)
-        if index.column() != 5:
+        if index.column() != 6:
             text = text.strip()
         if index.column() == 0:
             row.datum = text
         elif index.column() == 1:
-            row.uhrzeit_von = text
+            return False
         elif index.column() == 2:
-            row.uhrzeit_bis = text
+            row.uhrzeit_von = text
         elif index.column() == 3:
-            row.unterbrechung_beginn = text
+            row.uhrzeit_bis = text
         elif index.column() == 4:
-            row.unterbrechung_ende = text
+            row.unterbrechung_beginn = text
         elif index.column() == 5:
+            row.unterbrechung_ende = text
+        elif index.column() == 6:
             row.anmerkung = text
         else:
             return False
 
-        self.dataChanged.emit(index, index, [Qt.DisplayRole, Qt.EditRole])
+        if index.column() == 0:
+            left = self.index(index.row(), 0)
+            right = self.index(index.row(), len(self.HEADERS) - 1)
+            self.dataChanged.emit(
+                left, right, [Qt.DisplayRole, Qt.EditRole, Qt.BackgroundRole]
+            )
+            self.headerDataChanged.emit(Qt.Vertical, index.row(), index.row())
+            return True
+
+        self.dataChanged.emit(index, index, [Qt.DisplayRole, Qt.EditRole, Qt.BackgroundRole])
         return True
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
         if not index.isValid():
             return Qt.ItemIsEnabled
+        if index.column() == 1:
+            return Qt.ItemIsSelectable | Qt.ItemIsEnabled
         return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
 
     def add_empty_row(self) -> None:
@@ -151,3 +187,36 @@ class ZeiteintragTableModel(QAbstractTableModel):
 
     def is_row_dirty(self, row_index: int) -> bool:
         return row_index in self._dirty_rows
+
+    @staticmethod
+    def _weekday_from_date(datum_text: str) -> str:
+        text = datum_text.strip()
+        if not text:
+            return ""
+        try:
+            datum = datetime.strptime(text, "%d.%m.%Y").date()
+        except ValueError:
+            return ""
+        return ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"][datum.weekday()]
+
+    @staticmethod
+    def _day_of_month_from_date(datum_text: str) -> str:
+        text = datum_text.strip()
+        if not text:
+            return ""
+        try:
+            datum = datetime.strptime(text, "%d.%m.%Y").date()
+        except ValueError:
+            return ""
+        return f"{datum.day:02d}"
+
+    @staticmethod
+    def _is_weekend_date(datum_text: str) -> bool:
+        text = datum_text.strip()
+        if not text:
+            return False
+        try:
+            datum = datetime.strptime(text, "%d.%m.%Y").date()
+        except ValueError:
+            return False
+        return datum.weekday() >= 5
