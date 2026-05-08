@@ -1,0 +1,4 @@
+[google]
+url = "https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events"
+bundesland = "Hessen"
+kalender_id_hessen = "de.he#holiday@group.v.calendar.google.com"
