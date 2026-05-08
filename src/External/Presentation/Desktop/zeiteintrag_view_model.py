@@ -50,9 +50,20 @@ class ZeiteintragViewModel(QObject):
             self.error_occurred.emit("Es sind keine Zeilen zum Speichern vorhanden.")
             return False
 
+        zeilen_zum_speichern = [
+            (zeilen_nummer, row)
+            for zeilen_nummer, row in enumerate(self._table_model.rows, start=1)
+            if row.uhrzeit_von.strip() or row.uhrzeit_bis.strip()
+        ]
+        if not zeilen_zum_speichern:
+            self.error_occurred.emit(
+                "Es wurden keine Zeilen mit ausgefuellter Spalte 'Von' oder 'Bis' gefunden."
+            )
+            return False
+
         erfolgreich = 0
         fehler: list[str] = []
-        for zeilen_nummer, row in enumerate(self._table_model.rows, start=1):
+        for zeilen_nummer, row in zeilen_zum_speichern:
             try:
                 eintrag = Zeiteintrag(
                     id=row.id,

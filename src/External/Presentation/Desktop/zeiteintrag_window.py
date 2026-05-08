@@ -269,16 +269,7 @@ class ZeiteintragWindow(QMainWindow):
             unterbrechung_beginn = row.unterbrechung_beginn.strip()
             unterbrechung_ende = row.unterbrechung_ende.strip()
             anmerkung = row.anmerkung.strip()
-            # Komplett leere neue Zeilen sollen keinen "unsaved" Zustand ausloesen.
-            if (
-                row.id is None
-                and not datum
-                and not uhrzeit_von
-                and not uhrzeit_bis
-                and not unterbrechung_beginn
-                and not unterbrechung_ende
-                and not anmerkung
-            ):
+            if not self._is_row_relevant_for_unsaved(uhrzeit_von, uhrzeit_bis):
                 continue
             snapshot.append(
                 (
@@ -312,16 +303,7 @@ class ZeiteintragWindow(QMainWindow):
             unterbrechung_ende = row.unterbrechung_ende.strip()
             anmerkung = row.anmerkung.strip()
 
-            is_empty_new_row = (
-                row.id is None
-                and not datum
-                and not uhrzeit_von
-                and not uhrzeit_bis
-                and not unterbrechung_beginn
-                and not unterbrechung_ende
-                and not anmerkung
-            )
-            if is_empty_new_row:
+            if not self._is_row_relevant_for_unsaved(uhrzeit_von, uhrzeit_bis):
                 continue
 
             if row.id is None:
@@ -341,3 +323,7 @@ class ZeiteintragWindow(QMainWindow):
                 dirty_rows.add(index)
 
         return dirty_rows
+
+    @staticmethod
+    def _is_row_relevant_for_unsaved(uhrzeit_von: str, uhrzeit_bis: str) -> bool:
+        return bool(uhrzeit_von)
