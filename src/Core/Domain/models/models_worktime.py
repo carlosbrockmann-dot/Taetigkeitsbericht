@@ -37,6 +37,7 @@ class Zeiteintrag(ArbeitszeitBasis):
 
 
 class Stundenplan(ArbeitszeitBasis):
+    id: Optional[int] = None
     wochentag: int = Field(ge=1, le=7, description="1=Montag, 7=Sonntag")
 
 

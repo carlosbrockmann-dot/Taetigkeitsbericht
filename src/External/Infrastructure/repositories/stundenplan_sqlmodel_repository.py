@@ -8,6 +8,7 @@ from External.Infrastructure.sqlmodel_tables import StundenplanTable
 
 def _row_to_domain(row: StundenplanTable) -> Stundenplan:
     return Stundenplan(
+        id=row.id,
         wochentag=row.wochentag,
         uhrzeit_von=row.uhrzeit_von,
         uhrzeit_bis=row.uhrzeit_bis,
@@ -21,16 +22,28 @@ class SqlStundenplanRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def add(self, eintrag: Stundenplan) -> Stundenplan:
-        row = StundenplanTable(
-            wochentag=eintrag.wochentag,
-            uhrzeit_von=eintrag.uhrzeit_von,
-            uhrzeit_bis=eintrag.uhrzeit_bis,
-            unterbrechung_beginn=eintrag.unterbrechung_beginn,
-            unterbrechung_ende=eintrag.unterbrechung_ende,
-            anmerkung=eintrag.anmerkung,
-        )
-        self._session.add(row)
+    def save(self, eintrag: Stundenplan) -> Stundenplan:
+        row: StundenplanTable | None = None
+        if eintrag.id is not None:
+            row = self._session.get(StundenplanTable, eintrag.id)
+        if row is None:
+            row = StundenplanTable(
+                id=eintrag.id,
+                wochentag=eintrag.wochentag,
+                uhrzeit_von=eintrag.uhrzeit_von,
+                uhrzeit_bis=eintrag.uhrzeit_bis,
+                unterbrechung_beginn=eintrag.unterbrechung_beginn,
+                unterbrechung_ende=eintrag.unterbrechung_ende,
+                anmerkung=eintrag.anmerkung,
+            )
+            self._session.add(row)
+        else:
+            row.wochentag = eintrag.wochentag
+            row.uhrzeit_von = eintrag.uhrzeit_von
+            row.uhrzeit_bis = eintrag.uhrzeit_bis
+            row.unterbrechung_beginn = eintrag.unterbrechung_beginn
+            row.unterbrechung_ende = eintrag.unterbrechung_ende
+            row.anmerkung = eintrag.anmerkung
         self._session.commit()
         self._session.refresh(row)
         return _row_to_domain(row)
@@ -62,3 +75,11 @@ class SqlStundenplanRepository:
             self._session.delete(row)
         self._session.commit()
         return len(rows) > 0
+
+    def delete_by_id(self, eintrag_id: int) -> bool:
+        row = self._session.get(StundenplanTable, eintrag_id)
+        if row is None:
+            return False
+        self._session.delete(row)
+        self._session.commit()
+        return True

@@ -6,7 +6,7 @@ from ..models.models_worktime import Stundenplan
 
 
 class IStundenplanRepository(Protocol):
-    def add(self, eintrag: Stundenplan) -> Stundenplan:
+    def save(self, eintrag: Stundenplan) -> Stundenplan:
         ...
 
     def get_by_wochentag(self, wochentag: int) -> list[Stundenplan]:
@@ -16,4 +16,7 @@ class IStundenplanRepository(Protocol):
         ...
 
     def delete_by_wochentag(self, wochentag: int) -> bool:
+        ...
+
+    def delete_by_id(self, eintrag_id: int) -> bool:
         ...

@@ -13,6 +13,8 @@ class StundenplanService:
     def erfasse_stundenplaneintrag(self, eintrag: Stundenplan) -> Stundenplan:
         vorhandene_eintraege = self._repository.get_by_wochentag(eintrag.wochentag)
         for vorhandener_eintrag in vorhandene_eintraege:
+            if eintrag.id is not None and vorhandener_eintrag.id == eintrag.id:
+                continue
             if self._zeitraeume_ueberschneiden_sich(
                 eintrag.uhrzeit_von,
                 eintrag.uhrzeit_bis,
@@ -22,7 +24,7 @@ class StundenplanService:
                 raise ValueError(
                     "Der Zeitraum ueberschneidet sich mit einem bestehenden Stundenplaneintrag am selben Wochentag."
                 )
-        return self._repository.add(eintrag)
+        return self._repository.save(eintrag)
 
     def hole_stundenplan(self, wochentag: int) -> list[Stundenplan]:
         return self._repository.get_by_wochentag(wochentag)
@@ -32,6 +34,9 @@ class StundenplanService:
 
     def loesche_stundenplan(self, wochentag: int) -> bool:
         return self._repository.delete_by_wochentag(wochentag)
+
+    def loesche_stundenplan_per_id(self, eintrag_id: int) -> bool:
+        return self._repository.delete_by_id(eintrag_id)
 
     @staticmethod
     def _zeitraeume_ueberschneiden_sich(

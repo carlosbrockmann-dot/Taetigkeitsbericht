@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, time
 from typing import Optional
+from uuid import UUID
 
 from ..models.models_worktime import Zeiteintrag
 from ..interfaces.zeiteintrag_repository_interface import IZeiteintragRepository
@@ -37,6 +38,9 @@ class ZeiteintragService:
 
     def loesche_zeiteintrag(self, datum: date) -> bool:
         return self._repository.delete_by_datum(datum)
+
+    def loesche_zeiteintrag_per_id(self, eintrag_id: UUID) -> bool:
+        return self._repository.delete_by_id(eintrag_id)
 
     @staticmethod
     def _zeitraeume_ueberschneiden_sich(

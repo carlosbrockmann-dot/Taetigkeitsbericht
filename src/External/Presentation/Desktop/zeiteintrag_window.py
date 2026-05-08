@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from uuid import UUID
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPersistentModelIndex, Qt
 from PySide6.QtGui import QCloseEvent, QGuiApplication, QKeySequence, QPalette, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -17,10 +17,12 @@ from PySide6.QtWidgets import (
     QStyledItemDelegate,
     QSpinBox,
     QTableView,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from External.Presentation.Desktop.stundenplan_view import StundenplanView
 from External.Presentation.Desktop.zeiteintrag_view_model import ZeiteintragViewModel
 
 
@@ -28,7 +30,26 @@ class LiveCommitDelegate(QStyledItemDelegate):
     def createEditor(self, parent, option, index):  # noqa: N802
         editor = super().createEditor(parent, option, index)
         if isinstance(editor, QLineEdit):
-            editor.editingFinished.connect(lambda e=editor: self._commit_live(e))
+            persistent = QPersistentModelIndex(index)
+
+            def on_editing_finished() -> None:
+                if not persistent.isValid():
+                    return
+                model = persistent.model()
+                if model is None:
+                    return
+                idx = model.index(
+                    persistent.row(),
+                    persistent.column(),
+                    persistent.parent(),
+                )
+                if not idx.isValid():
+                    return
+                editor.setProperty("_live_commit", True)
+                self.setModelData(editor, model, idx)
+                editor.setProperty("_live_commit", False)
+
+            editor.editingFinished.connect(on_editing_finished)
         return editor
 
     def paint(self, painter, option, index):  # noqa: N802
@@ -40,11 +61,6 @@ class LiveCommitDelegate(QStyledItemDelegate):
             paint_option.palette.setColor(QPalette.Text, text_color)
             paint_option.palette.setColor(QPalette.HighlightedText, text_color)
         super().paint(painter, paint_option, index)
-
-    def _commit_live(self, editor: QLineEdit) -> None:
-        editor.setProperty("_live_commit", True)
-        self.commitData.emit(editor)
-        editor.setProperty("_live_commit", False)
 
     def setModelData(self, editor, model, index):  # noqa: N802
         if isinstance(editor, QLineEdit):
@@ -62,24 +78,29 @@ class LiveCommitDelegate(QStyledItemDelegate):
 
 
 class ZeiteintragWindow(QMainWindow):
-    def __init__(self, view_model: ZeiteintragViewModel) -> None:
+    def __init__(
+        self,
+        view_model: ZeiteintragViewModel,
+        stundenplan_view: StundenplanView,
+    ) -> None:
         super().__init__()
         self._view_model = view_model
+        self._stundenplan_view = stundenplan_view
         self._has_unsaved_changes = False
         self._current_loaded_year: int | None = None
         self._current_loaded_month: int | None = None
         self._ignore_period_change = False
         self._suspend_dirty_tracking = False
         self._baseline_rows: list[tuple[object, str, str, str, str, str, str]] = []
-        self.setWindowTitle("Taetigkeitsbericht - Zeiteintrag Erfassung")
+        self.setWindowTitle("Taetigkeitsbericht - Erfassung")
         self.resize(1100, 640)
         self._build_ui()
         self._bind_view_model()
         self._load_selected_period()
 
     def _build_ui(self) -> None:
-        central_widget = QWidget(self)
-        root_layout = QVBoxLayout(central_widget)
+        zeiteintrag_widget = QWidget(self)
+        root_layout = QVBoxLayout(zeiteintrag_widget)
         toolbar_layout = QHBoxLayout()
 
         self._jahr_spin = QSpinBox(self)
@@ -126,7 +147,11 @@ class ZeiteintragWindow(QMainWindow):
         root_layout.addLayout(toolbar_layout)
         root_layout.addWidget(self._table)
         root_layout.addWidget(self._status_label)
-        self.setCentralWidget(central_widget)
+
+        self._tab_widget = QTabWidget(self)
+        self._tab_widget.addTab(zeiteintrag_widget, "Zeiteintraege")
+        self._tab_widget.addTab(self._stundenplan_view, "Stundenplan")
+        self.setCentralWidget(self._tab_widget)
 
         self._laden_button.clicked.connect(self._on_laden)
         self._zeile_hinzufuegen_button.clicked.connect(self._on_zeile_hinzufuegen)
@@ -199,7 +224,10 @@ class ZeiteintragWindow(QMainWindow):
         )
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
-        if self._has_unsaved_changes and not self._confirm_close_with_unsaved_changes():
+        gibt_offene_aenderungen = (
+            self._has_unsaved_changes or self._stundenplan_view.has_unsaved_changes
+        )
+        if gibt_offene_aenderungen and not self._confirm_close_with_unsaved_changes():
             event.ignore()
             return
         event.accept()
@@ -271,10 +299,25 @@ class ZeiteintragWindow(QMainWindow):
         selection_model.clearSelection()
 
     def _on_speichern(self) -> None:
-        if self._view_model.speichere_alle():
-            self._capture_baseline()
-            self._has_unsaved_changes = False
-            self._view_model.table_model.set_dirty_rows(set())
+        if not self._view_model.speichere_alle():
+            return
+        self._capture_baseline()
+        self._has_unsaved_changes = False
+        self._view_model.table_model.set_dirty_rows(set())
+        self._reload_current_period()
+
+    def _reload_current_period(self) -> None:
+        selected_year, selected_month = self._selected_period()
+        self._suspend_dirty_tracking = True
+        try:
+            self._view_model.lade_zeitraum(selected_year, selected_month)
+        finally:
+            self._suspend_dirty_tracking = False
+        self._current_loaded_year = selected_year
+        self._current_loaded_month = selected_month
+        self._capture_baseline()
+        self._has_unsaved_changes = False
+        self._view_model.table_model.set_dirty_rows(set())
 
     def _on_selection_changed(self, *_args) -> None:
         self._kopiere_markierte_zellen_in_zwischenablage(silent=True)

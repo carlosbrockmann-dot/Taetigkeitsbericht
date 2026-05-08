@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 from typing import Optional
+from uuid import UUID
 
 from Core.Domain.models.models_worktime import Stundenplan, Zeiteintrag
 from Core.Domain.services.zeiteintrag_service import ZeiteintragService
@@ -43,3 +44,6 @@ class ZeiteintragAnwendung:
 
     def loesche_fuer_datum(self, datum: date) -> bool:
         return self._service.loesche_zeiteintrag(datum)
+
+    def loesche_per_id(self, eintrag_id: UUID) -> bool:
+        return self._service.loesche_zeiteintrag_per_id(eintrag_id)

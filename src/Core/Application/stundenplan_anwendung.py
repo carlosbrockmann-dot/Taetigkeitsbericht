@@ -19,3 +19,6 @@ class StundenplanAnwendung:
 
     def loesche_fuer_wochentag(self, wochentag: int) -> bool:
         return self._service.loesche_stundenplan(wochentag)
+
+    def loesche_per_id(self, eintrag_id: int) -> bool:
+        return self._service.loesche_stundenplan_per_id(eintrag_id)

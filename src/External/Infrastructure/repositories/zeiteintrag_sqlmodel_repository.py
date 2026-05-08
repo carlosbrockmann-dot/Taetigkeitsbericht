@@ -78,3 +78,11 @@ class SqlZeiteintragRepository:
             self._session.delete(row)
         self._session.commit()
         return len(rows) > 0
+
+    def delete_by_id(self, eintrag_id: UUID) -> bool:
+        row = self._session.get(ZeiteintragTable, str(eintrag_id))
+        if row is None:
+            return False
+        self._session.delete(row)
+        self._session.commit()
+        return True
