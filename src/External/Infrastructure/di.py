@@ -6,11 +6,15 @@ from injector import Module, provider
 from sqlmodel import Session
 
 from Core.Domain.interfaces.feiertag_repository_interface import IFeiertagRepository
+from Core.Domain.interfaces.krankmeldung_repository_interface import IKrankmeldungRepository
 from Core.Domain.interfaces.stundenplan_repository_interface import IStundenplanRepository
+from Core.Domain.interfaces.urlaubsantrag_repository_interface import IUrlaubsantragRepository
 from Core.Domain.interfaces.zeiteintrag_repository_interface import IZeiteintragRepository
 from External.Infrastructure.database import create_sqlite_engine, init_db
 from External.Infrastructure.repositories.feiertag_sqlmodel_repository import SqlFeiertagRepository
+from External.Infrastructure.repositories.krankmeldung_sqlmodel_repository import SqlKrankmeldungRepository
 from External.Infrastructure.repositories.stundenplan_sqlmodel_repository import SqlStundenplanRepository
+from External.Infrastructure.repositories.urlaubsantrag_sqlmodel_repository import SqlUrlaubsantragRepository
 from External.Infrastructure.repositories.zeiteintrag_sqlmodel_repository import SqlZeiteintragRepository
 
 
@@ -37,3 +41,11 @@ class InfrastructureDIModule(Module):
     @provider
     def provide_zeiteintrag_repository(self, session: Session) -> IZeiteintragRepository:
         return SqlZeiteintragRepository(session)
+
+    @provider
+    def provide_urlaubsantrag_repository(self, session: Session) -> IUrlaubsantragRepository:
+        return SqlUrlaubsantragRepository(session)
+
+    @provider
+    def provide_krankmeldung_repository(self, session: Session) -> IKrankmeldungRepository:
+        return SqlKrankmeldungRepository(session)

@@ -41,3 +41,25 @@ class FeiertagTable(SQLModel, table=True):
     datum: date = Field(primary_key=True)
     feiertagsname: str = Field(max_length=80)
     hinweis: Optional[str] = Field(default=None, max_length=80)
+
+
+class UrlaubsantragTable(SQLModel, table=True):
+    __tablename__ = "urlaubsantrag"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    datum_von: date
+    datum_bis: date
+    urlaubstyp: str = Field(max_length=80)
+    urlaubstage: float = Field(ge=0)
+    genehmigt: bool = Field(default=False)
+
+
+class KrankmeldungTable(SQLModel, table=True):
+    __tablename__ = "krankmeldung"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    krank_von: date
+    krank_bis: date
+    krankmeldung: str = Field(max_length=80)
+    krankmeldungstage: int = Field(ge=0)
+    krankmeldungstagsname: str = Field(max_length=80)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from calendar import monthrange
 from datetime import date, time
 from typing import Optional
 from uuid import UUID
@@ -41,6 +42,11 @@ class ZeiteintragService:
 
     def loesche_zeiteintrag_per_id(self, eintrag_id: UUID) -> bool:
         return self._repository.delete_by_id(eintrag_id)
+
+    @staticmethod
+    def _get_monatstage(jahr: int, monat: int) -> list[date]:
+        _, anzahl_tage = monthrange(jahr, monat)
+        return [date(jahr, monat, tag) for tag in range(1, anzahl_tage + 1)]
 
     @staticmethod
     def _zeitraeume_ueberschneiden_sich(

@@ -13,7 +13,9 @@ if str(SRC_ROOT) not in sys.path:
 from App.app_config import AppConfig, load_app_config
 from Core.Application.di import ApplicationDIModule
 from Core.Application.feiertag_anwendung import FeiertagAnwendung
+from Core.Application.krankmeldung_anwendung import KrankmeldungAnwendung
 from Core.Application.stundenplan_anwendung import StundenplanAnwendung
+from Core.Application.urlaubsantrag_anwendung import UrlaubsantragAnwendung
 from Core.Application.zeiteintrag_anwendung import ZeiteintragAnwendung
 from External.Infrastructure.di import InfrastructureConfig, InfrastructureDIModule
 from External.Presentation.Desktop.di import DesktopPresentationDIModule
@@ -41,9 +43,13 @@ def build_applications(injector_instance: Injector) -> tuple[
     ZeiteintragAnwendung,
     StundenplanAnwendung,
     FeiertagAnwendung,
+    UrlaubsantragAnwendung,
+    KrankmeldungAnwendung,
 ]:
     return (
         injector_instance.get(ZeiteintragAnwendung),
         injector_instance.get(StundenplanAnwendung),
         injector_instance.get(FeiertagAnwendung),
+        injector_instance.get(UrlaubsantragAnwendung),
+        injector_instance.get(KrankmeldungAnwendung),
     )

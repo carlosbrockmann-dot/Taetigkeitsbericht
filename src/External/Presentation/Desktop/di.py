@@ -4,7 +4,9 @@ from injector import Module, provider, singleton
 
 from App.app_config import AppConfig
 from Core.Application.feiertag_anwendung import FeiertagAnwendung
+from Core.Application.krankmeldung_anwendung import KrankmeldungAnwendung
 from Core.Application.stundenplan_anwendung import StundenplanAnwendung
+from Core.Application.urlaubsantrag_anwendung import UrlaubsantragAnwendung
 from Core.Application.zeiteintrag_anwendung import ZeiteintragAnwendung
 from External.Presentation.Desktop.feiertag_registry import FeiertagRegistry
 from External.Presentation.Desktop.feiertag_view import FeiertagView
@@ -12,6 +14,10 @@ from External.Presentation.Desktop.feiertag_view_model import FeiertagViewModel
 from External.Presentation.Desktop.stundenplan_registry import StundenplanRegistry
 from External.Presentation.Desktop.stundenplan_view import StundenplanView
 from External.Presentation.Desktop.stundenplan_view_model import StundenplanViewModel
+from External.Presentation.Desktop.krankmeldung_view import KrankmeldungView
+from External.Presentation.Desktop.krankmeldung_view_model import KrankmeldungViewModel
+from External.Presentation.Desktop.urlaubsantrag_view import UrlaubsantragView
+from External.Presentation.Desktop.urlaubsantrag_view_model import UrlaubsantragViewModel
 from External.Presentation.Desktop.zeiteintrag_view_model import ZeiteintragViewModel
 from External.Presentation.Desktop.zeiteintrag_window import ZeiteintragWindow
 
@@ -63,6 +69,18 @@ class DesktopPresentationDIModule(Module):
         return FeiertagViewModel(anwendung, feiertag_registry)
 
     @provider
+    def provide_urlaubsantrag_view_model(
+        self, anwendung: UrlaubsantragAnwendung
+    ) -> UrlaubsantragViewModel:
+        return UrlaubsantragViewModel(anwendung)
+
+    @provider
+    def provide_krankmeldung_view_model(
+        self, anwendung: KrankmeldungAnwendung
+    ) -> KrankmeldungViewModel:
+        return KrankmeldungViewModel(anwendung)
+
+    @provider
     def provide_stundenplan_view(
         self,
         view_model: StundenplanViewModel,
@@ -80,17 +98,33 @@ class DesktopPresentationDIModule(Module):
         return FeiertagView(view_model)
 
     @provider
+    def provide_urlaubsantrag_view(
+        self, view_model: UrlaubsantragViewModel
+    ) -> UrlaubsantragView:
+        return UrlaubsantragView(view_model)
+
+    @provider
+    def provide_krankmeldung_view(
+        self, view_model: KrankmeldungViewModel
+    ) -> KrankmeldungView:
+        return KrankmeldungView(view_model)
+
+    @provider
     def provide_zeiteintrag_window(
         self,
         view_model: ZeiteintragViewModel,
         stundenplan_view: StundenplanView,
         feiertag_view: FeiertagView,
+        urlaubsantrag_view: UrlaubsantragView,
+        krankmeldung_view: KrankmeldungView,
         app_config: AppConfig,
     ) -> ZeiteintragWindow:
         return ZeiteintragWindow(
             view_model,
             stundenplan_view,
             feiertag_view,
+            urlaubsantrag_view,
+            krankmeldung_view,
             excel_export=app_config.zeiteintrag_excel_export,
             ausgeblendete_spalten=app_config.zeiteintrag_ausgeblendete_spalten,
         )

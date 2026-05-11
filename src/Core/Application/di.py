@@ -3,15 +3,21 @@ from __future__ import annotations
 from injector import Binder, Module, provider
 
 from Core.Application.feiertag_anwendung import FeiertagAnwendung
+from Core.Application.krankmeldung_anwendung import KrankmeldungAnwendung
 from Core.Application.stundenplan_anwendung import StundenplanAnwendung
+from Core.Application.urlaubsantrag_anwendung import UrlaubsantragAnwendung
 from Core.Application.zeiteintrag_anwendung import ZeiteintragAnwendung
 from Core.Domain.interfaces.auth_interface import IAuthService
 from Core.Domain.interfaces.feiertag_repository_interface import IFeiertagRepository
+from Core.Domain.interfaces.krankmeldung_repository_interface import IKrankmeldungRepository
 from Core.Domain.interfaces.stundenplan_repository_interface import IStundenplanRepository
+from Core.Domain.interfaces.urlaubsantrag_repository_interface import IUrlaubsantragRepository
 from Core.Domain.interfaces.zeiteintrag_repository_interface import IZeiteintragRepository
 from Core.Domain.services.auth_service import AuthService
 from Core.Domain.services.feiertag_service import FeiertagService
+from Core.Domain.services.krankmeldung_service import KrankmeldungService
 from Core.Domain.services.stundenplan_service import StundenplanService
+from Core.Domain.services.urlaubsantrag_service import UrlaubsantragService
 from Core.Domain.services.zeiteintrag_service import ZeiteintragService
 
 
@@ -36,6 +42,18 @@ class ApplicationDIModule(Module):
         return FeiertagService(repository)
 
     @provider
+    def provide_urlaubsantrag_service(
+        self, repository: IUrlaubsantragRepository
+    ) -> UrlaubsantragService:
+        return UrlaubsantragService(repository)
+
+    @provider
+    def provide_krankmeldung_service(
+        self, repository: IKrankmeldungRepository
+    ) -> KrankmeldungService:
+        return KrankmeldungService(repository)
+
+    @provider
     def provide_zeiteintrag_anwendung(
         self, service: ZeiteintragService
     ) -> ZeiteintragAnwendung:
@@ -50,3 +68,15 @@ class ApplicationDIModule(Module):
     @provider
     def provide_feiertag_anwendung(self, service: FeiertagService) -> FeiertagAnwendung:
         return FeiertagAnwendung(service)
+
+    @provider
+    def provide_urlaubsantrag_anwendung(
+        self, service: UrlaubsantragService
+    ) -> UrlaubsantragAnwendung:
+        return UrlaubsantragAnwendung(service)
+
+    @provider
+    def provide_krankmeldung_anwendung(
+        self, service: KrankmeldungService
+    ) -> KrankmeldungAnwendung:
+        return KrankmeldungAnwendung(service)

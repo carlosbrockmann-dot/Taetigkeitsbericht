@@ -29,7 +29,9 @@ from PySide6.QtWidgets import (
 
 from App.app_config import ZeiteintragExcelExportSettings
 from External.Presentation.Desktop.feiertag_view import FeiertagView
+from External.Presentation.Desktop.krankmeldung_view import KrankmeldungView
 from External.Presentation.Desktop.stundenplan_view import StundenplanView
+from External.Presentation.Desktop.urlaubsantrag_view import UrlaubsantragView
 from External.Presentation.Desktop.zeiteintrag_table_model import ZeiteintragTableModel
 from External.Presentation.Desktop.zeiteintrag_view_model import ZeiteintragViewModel
 
@@ -220,6 +222,8 @@ class ZeiteintragWindow(QMainWindow):
         view_model: ZeiteintragViewModel,
         stundenplan_view: StundenplanView,
         feiertag_view: FeiertagView,
+        urlaubsantrag_view: UrlaubsantragView,
+        krankmeldung_view: KrankmeldungView,
         excel_export: ZeiteintragExcelExportSettings | None = None,
         ausgeblendete_spalten: Sequence[int] | None = None,
     ) -> None:
@@ -227,6 +231,8 @@ class ZeiteintragWindow(QMainWindow):
         self._view_model = view_model
         self._stundenplan_view = stundenplan_view
         self._feiertag_view = feiertag_view
+        self._urlaubsantrag_view = urlaubsantrag_view
+        self._krankmeldung_view = krankmeldung_view
         self._excel_export = excel_export or ZeiteintragExcelExportSettings()
         self._ausgeblendete_spalten = tuple(ausgeblendete_spalten or ())
         self._has_unsaved_changes = False
@@ -334,6 +340,8 @@ class ZeiteintragWindow(QMainWindow):
         self._tab_widget.addTab(zeiteintrag_widget, "Zeiteintraege")
         self._tab_widget.addTab(self._stundenplan_view, "Stundenplan")
         self._tab_widget.addTab(self._feiertag_view, "Feiertage")
+        self._tab_widget.addTab(self._urlaubsantrag_view, "Urlaub")
+        self._tab_widget.addTab(self._krankmeldung_view, "Krankmeldung")
         self.setCentralWidget(self._tab_widget)
 
         self._laden_button.clicked.connect(self._on_laden)

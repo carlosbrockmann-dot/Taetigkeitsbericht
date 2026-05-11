@@ -45,6 +45,20 @@ def _rename_pause_columns(engine) -> None:
             )
 
 
+def _drop_urlaubsantrag_urlaubstagsname_column(engine) -> None:
+    """SQLite 3.35+: entfernt die nicht mehr genutzte Spalte urlaubstagsname."""
+    if not str(engine.url).startswith("sqlite"):
+        return
+    inspector = inspect(engine)
+    if "urlaubsantrag" not in inspector.get_table_names():
+        return
+    spalten = {c["name"] for c in inspector.get_columns("urlaubsantrag")}
+    if "urlaubstagsname" not in spalten:
+        return
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE urlaubsantrag DROP COLUMN urlaubstagsname"))
+
+
 def _ensure_pause2_columns(engine) -> None:
     if not str(engine.url).startswith("sqlite"):
         return
@@ -76,3 +90,4 @@ def init_db(engine) -> None:
     _ensure_feiertag_hinweis_column(engine)
     _rename_pause_columns(engine)
     _ensure_pause2_columns(engine)
+    _drop_urlaubsantrag_urlaubstagsname_column(engine)
