@@ -23,11 +23,16 @@ wochenstunden_regel = 40
 wochenstunden_max = 48
 wochenstunden_summe = 16
 
+# Zeiteintrag: Spalten in der Tabelle (0–12) nur ausblenden; Daten bleiben im Modell.
+# [zeiteintrag_excel_export].cell_spec kann ausgeblendete Indizes weiter verwenden.
+[zeiteintrag_tabelle]
+ausgeblendete_spalten = []
+
 # Zeiteintrag: Button „Fuer Excel kopieren“ (tab-getrennte Zwischenablage).
 #
 # cell_spec — Ausgabereihenfolge:
-#   - Ganze Zahl 0…11 = Quellspalte im Tabellenmodell (0 Tag, 1 Datum, 2–3 Von/Bis,
-#     4–7 Pausen Von/Bis, 8 Geleistet, 9 Soll, 10 Vertrag (Tooltip: Soll nach Vertrag), 11 Kommentar).
+#   - Ganze Zahl 0…12 = Quellspalte im Tabellenmodell (0 Tag, 1 Datum, 2–3 Von/Bis,
+#     4–7 Pausen Von/Bis, 8 Geleistet, 9 Soll, 10 Vertrag, 11 Kommentar, 12 Kalendertag als Text z. B. 7.).
 #   - "blank" = leere Zelle (z. B. Platzhalter statt Geleistet/Soll).
 # include_header — true: erste Zeile mit den gleichen Spaltennamen wie im Modell.
 # leading_empty_columns / trailing_empty_columns — zusaetzliche leere Spalten am Rand jeder Zeile.
@@ -36,5 +41,5 @@ wochenstunden_summe = 16
 include_header = false
 leading_empty_columns = 0
 trailing_empty_columns = 0
-cell_spec = [ 0, 1, 2, 3, 4, 5, 6, 7, "blank", "blank", 11 ]
+cell_spec = [ 0, 12, 2, 3, 4, 5, 6, 7, "blank", "blank", 11]
 

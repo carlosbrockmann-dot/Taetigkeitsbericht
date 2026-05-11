@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 import tomllib
 
@@ -18,6 +18,7 @@ DEFAULT_ZEITEINTRAG_EXCEL_CELL_SPEC: tuple[int | None, ...] = (
     None,
     None,
     11,
+    12,
 )
 
 
@@ -64,9 +65,9 @@ def _parse_cell_spec(raw: Any) -> tuple[int | None, ...]:
         if isinstance(x, bool):
             raise ValueError("cell_spec: boolesche Werte sind nicht erlaubt.")
         if isinstance(x, int):
-            if not 0 <= x <= 11:
+            if not 0 <= x <= ZEITEINTRAG_SPALTEN_MAX:
                 raise ValueError(
-                    f"cell_spec: Spaltenindex {x} ungueltig (Zeiteintrag-Tabelle: 0–11)."
+                    f"cell_spec: Spaltenindex {x} ungueltig (Zeiteintrag-Tabelle: 0–{ZEITEINTRAG_SPALTEN_MAX})."
                 )
             out.append(x)
             continue
@@ -74,6 +75,32 @@ def _parse_cell_spec(raw: Any) -> tuple[int | None, ...]:
     if not out:
         raise ValueError("cell_spec darf nicht leer sein.")
     return tuple(out)
+
+
+ZEITEINTRAG_SPALTEN_MAX: Final[int] = 12
+
+
+def _parse_ausgeblendete_spalten(raw: Any) -> tuple[int, ...]:
+    if raw is None:
+        return ()
+    if not isinstance(raw, list):
+        raise TypeError("zeiteintrag_tabelle.ausgeblendete_spalten muss eine Liste sein.")
+    out: set[int] = set()
+    for idx, x in enumerate(raw):
+        if isinstance(x, bool):
+            raise ValueError(
+                f"ausgeblendete_spalten[{idx}]: boolesche Werte sind nicht erlaubt."
+            )
+        if not isinstance(x, int):
+            raise ValueError(
+                f"ausgeblendete_spalten[{idx}]: erwartet int (Spaltenindex 0–{ZEITEINTRAG_SPALTEN_MAX})."
+            )
+        if not 0 <= x <= ZEITEINTRAG_SPALTEN_MAX:
+            raise ValueError(
+                f"ausgeblendete_spalten[{idx}]: Spalte {x} ungueltig (0–{ZEITEINTRAG_SPALTEN_MAX})."
+            )
+        out.add(x)
+    return tuple(sorted(out))
 
 
 @dataclass(frozen=True)
@@ -95,6 +122,7 @@ class AppConfig:
     name: str = "Taetigkeitsbericht"
     version: str = "0.0.0"
     soll_nach_vertrag_nach_wochentag: dict[int, str] = field(default_factory=dict)
+    zeiteintrag_ausgeblendete_spalten: tuple[int, ...] = ()
     zeiteintrag_excel_export: ZeiteintragExcelExportSettings = field(
         default_factory=ZeiteintragExcelExportSettings
     )
@@ -112,6 +140,15 @@ def _section_zeiteintrag_excel_export(data: dict[str, Any]) -> ZeiteintragExcelE
         trailing_empty_columns=int(sec.get("trailing_empty_columns", 0)),
         cell_spec=_parse_cell_spec(sec.get("cell_spec")),
     )
+
+
+def _section_zeiteintrag_tabelle(data: dict[str, Any]) -> tuple[int, ...]:
+    sec = data.get("zeiteintrag_tabelle")
+    if sec is None:
+        return ()
+    if not isinstance(sec, dict):
+        raise TypeError("[zeiteintrag_tabelle] muss eine Tabelle sein.")
+    return _parse_ausgeblendete_spalten(sec.get("ausgeblendete_spalten"))
 
 
 def _section_soll_nach_vertrag(data: dict[str, Any]) -> dict[int, str]:
@@ -148,5 +185,6 @@ def load_app_config(config_path: Path | None = None) -> AppConfig:
         name=str(data.get("name", "Taetigkeitsbericht")),
         version=str(data.get("version", "0.0.0")),
         soll_nach_vertrag_nach_wochentag=_section_soll_nach_vertrag(data),
+        zeiteintrag_ausgeblendete_spalten=_section_zeiteintrag_tabelle(data),
         zeiteintrag_excel_export=_section_zeiteintrag_excel_export(data),
     )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date, datetime
 from uuid import UUID
 
@@ -220,12 +221,14 @@ class ZeiteintragWindow(QMainWindow):
         stundenplan_view: StundenplanView,
         feiertag_view: FeiertagView,
         excel_export: ZeiteintragExcelExportSettings | None = None,
+        ausgeblendete_spalten: Sequence[int] | None = None,
     ) -> None:
         super().__init__()
         self._view_model = view_model
         self._stundenplan_view = stundenplan_view
         self._feiertag_view = feiertag_view
         self._excel_export = excel_export or ZeiteintragExcelExportSettings()
+        self._ausgeblendete_spalten = tuple(ausgeblendete_spalten or ())
         self._has_unsaved_changes = False
         self._current_loaded_year: int | None = None
         self._current_loaded_month: int | None = None
@@ -256,7 +259,8 @@ class ZeiteintragWindow(QMainWindow):
         self._excel_kopieren_button = QPushButton("Fuer Excel kopieren", self)
         self._excel_kopieren_button.setToolTip(
             "Alle Datenzeilen als TSV in die Zwischenablage. "
-            "Ablauf und Kopfzeile: siehe [zeiteintrag_excel_export] in config.toml."
+            "Ablauf und Kopfzeile: siehe [zeiteintrag_excel_export] in config.toml; "
+            "ausgeblendete Spalten (siehe [zeiteintrag_tabelle]) sind im Export nutzbar."
         )
         self._zeile_hinzufuegen_button = QPushButton("Zeile hinzufuegen", self)
         self._zeile_loeschen_button = QPushButton("Markierte Zeile(n) loeschen", self)
@@ -301,7 +305,7 @@ class ZeiteintragWindow(QMainWindow):
             "}"
         )
         horizontal_header = self._table.horizontalHeader()
-        horizontal_header.setStretchLastSection(True)
+        horizontal_header.setStretchLastSection(False)
         horizontal_header.resizeSection(0, 50)
         horizontal_header.resizeSection(4, 60)
         horizontal_header.resizeSection(5, 60)
@@ -311,6 +315,11 @@ class ZeiteintragWindow(QMainWindow):
         horizontal_header.resizeSection(9, 72)
         horizontal_header.resizeSection(10, 88)
         horizontal_header.resizeSection(11, 220)
+        horizontal_header.resizeSection(12, 34)
+        horizontal_header.setSectionResizeMode(11, QHeaderView.ResizeMode.Stretch)
+        horizontal_header.setSectionResizeMode(12, QHeaderView.ResizeMode.Fixed)
+        for spalte in self._ausgeblendete_spalten:
+            self._table.setColumnHidden(spalte, True)
         self._table.verticalHeader().setVisible(True)
 
         root_layout.addLayout(toolbar_layout)

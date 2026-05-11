@@ -75,6 +75,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
         "Soll",
         "Vertrag",
         "Kommentar",
+        "d",
     ]
     HEADER_TOOLTIPS = [
         "Wird automatisch aus dem Datum ermittelt",
@@ -89,6 +90,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
         "Soll aus Stundenplan (Wochentag + Von), Format HH:MM",
         "Soll nach Vertrag, Format HH:MM",
         "Freitext (max. 80 Zeichen)",
+        "Kalendertag als Text fuer Excel (z. B. 7.)",
     ]
 
     def __init__(self) -> None:
@@ -144,6 +146,8 @@ class ZeiteintragTableModel(QAbstractTableModel):
         if not index.isValid():
             return None
         row = self._rows[index.row()]
+        if role == Qt.TextAlignmentRole and index.column() == 12:
+            return int(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
         if role == Qt.BackgroundRole:
             if self._is_weekend_date(row.datum):
                 return QColor("#eeeeee")
@@ -199,9 +203,11 @@ class ZeiteintragTableModel(QAbstractTableModel):
             case 9:
                 return self._soll_aus_stundenplan(row)
             case 10:
-                return self._soll_nach_vertrag(row)
+                return self._soll_nach_vertrag_fuer_zeile(index.row())
             case 11:
                 return row.anmerkung
+            case 12:
+                return self._kalendertag_mit_punkt_fuer_excel(row.datum)
             case _:
                 return None
 
@@ -230,7 +236,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
             row.pause2_beginn = text
         elif index.column() == 7:
             row.pause2_ende = text
-        elif index.column() in (8, 9, 10):
+        elif index.column() in (8, 9, 10, 12):
             return False
         elif index.column() == 11:
             row.anmerkung = text
@@ -252,6 +258,10 @@ class ZeiteintragTableModel(QAbstractTableModel):
                 ],
             )
             self.headerDataChanged.emit(Qt.Vertical, index.row(), index.row())
+            if self._rows:
+                v0 = self.index(0, 10)
+                v1 = self.index(len(self._rows) - 1, 10)
+                self.dataChanged.emit(v0, v1, [Qt.DisplayRole, Qt.EditRole])
             return True
 
         if index.column() in (2, 3, 4, 5, 6, 7):
@@ -270,7 +280,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
         if not index.isValid():
             return Qt.ItemIsEnabled
-        if index.column() in (0, 8, 9, 10):
+        if index.column() in (0, 8, 9, 10, 12):
             return Qt.ItemIsSelectable | Qt.ItemIsEnabled
         return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
 
@@ -375,10 +385,12 @@ class ZeiteintragTableModel(QAbstractTableModel):
         return geleistet, soll
 
     def summe_soll_nach_vertrag_minuten(self) -> int:
-        """Summe der in Spalte «Soll nach Vertrag» angezeigten Werte (alle Zeilen)."""
+        """Summe Vertrags-Soll: je Kalendertag nur die erste Zeile (wie in Spalte 10)."""
         summe = 0
-        for row in self._rows:
-            txt = self._soll_nach_vertrag(row)
+        for i, row in enumerate(self._rows):
+            if self._erste_zeilenindex_fuer_datum(row.datum) != i:
+                continue
+            txt = self._soll_nach_vertrag_rohwert(row)
             if not txt:
                 continue
             m = self._parse_minutes(txt)
@@ -437,6 +449,18 @@ class ZeiteintragTableModel(QAbstractTableModel):
             return ""
         return f"{datum.day:02d}"
 
+    @staticmethod
+    def _kalendertag_mit_punkt_fuer_excel(datum_text: str) -> str | None:
+        """z. B. '7.' damit Excel den Wert als Text (nicht als Zahl) behandelt."""
+        text = datum_text.strip()
+        if not text:
+            return None
+        try:
+            datum = datetime.strptime(text, "%d.%m.%Y").date()
+        except ValueError:
+            return None
+        return f"{datum.day}."
+
     def _soll_aus_stundenplan(self, row: ZeiteintragRow) -> str:
         if self._stundenplan_registry is None:
             return ""
@@ -454,7 +478,17 @@ class ZeiteintragTableModel(QAbstractTableModel):
             return self._stundenplan_registry.soll_fuer(wochentag, row.uhrzeit_von)
         return self._stundenplan_registry.gesamt_soll_fuer_wochentag(wochentag)
 
-    def _soll_nach_vertrag(self, row: ZeiteintragRow) -> str:
+    def _erste_zeilenindex_fuer_datum(self, datum_text: str) -> int | None:
+        ziel = datum_text.strip()
+        if not ziel:
+            return None
+        for i, r in enumerate(self._rows):
+            if r.datum.strip() == ziel:
+                return i
+        return None
+
+    def _soll_nach_vertrag_rohwert(self, row: ZeiteintragRow) -> str:
+        """Vertrags-Soll aus Konfiguration (ohne «nur erste Zeile pro Tag»)."""
         datum_text = row.datum.strip()
         if not datum_text:
             return ""
@@ -473,6 +507,19 @@ class ZeiteintragTableModel(QAbstractTableModel):
         if minuten is None or minuten <= 0:
             return ""
         return txt
+
+    def _soll_nach_vertrag_fuer_zeile(self, zeilen_index: int) -> str:
+        """Vertrags-Soll nur in der ersten Tabellenzeile je Kalendertag (Arbeitstag)."""
+        if zeilen_index < 0 or zeilen_index >= len(self._rows):
+            return ""
+        row = self._rows[zeilen_index]
+        basis = self._soll_nach_vertrag_rohwert(row)
+        if not basis:
+            return ""
+        erste = self._erste_zeilenindex_fuer_datum(row.datum)
+        if erste is None or zeilen_index != erste:
+            return ""
+        return basis
 
     def _feiertag_fuer_datumtext(self, datum_text: str) -> Feiertag | None:
         text = datum_text.strip()

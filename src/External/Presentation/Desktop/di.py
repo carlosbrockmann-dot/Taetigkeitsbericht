@@ -87,4 +87,5 @@ class DesktopPresentationDIModule(Module):
             stundenplan_view,
             feiertag_view,
             excel_export=app_config.zeiteintrag_excel_export,
+            ausgeblendete_spalten=app_config.zeiteintrag_ausgeblendete_spalten,
         )
