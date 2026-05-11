@@ -27,7 +27,7 @@ wochenstunden_summe = 16
 #
 # cell_spec — Ausgabereihenfolge:
 #   - Ganze Zahl 0…11 = Quellspalte im Tabellenmodell (0 Tag, 1 Datum, 2–3 Von/Bis,
-#     4–7 Pausen Von/Bis, 8 Geleistet, 9 Soll, 10 Soll nach Vertrag, 11 Kommentar).
+#     4–7 Pausen Von/Bis, 8 Geleistet, 9 Soll, 10 Vertrag (Tooltip: Soll nach Vertrag), 11 Kommentar).
 #   - "blank" = leere Zelle (z. B. Platzhalter statt Geleistet/Soll).
 # include_header — true: erste Zeile mit den gleichen Spaltennamen wie im Modell.
 # leading_empty_columns / trailing_empty_columns — zusaetzliche leere Spalten am Rand jeder Zeile.

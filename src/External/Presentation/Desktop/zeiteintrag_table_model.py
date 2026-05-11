@@ -73,7 +73,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
         "Bis",
         "Geleistet",
         "Soll",
-        "Soll nach Vertrag",
+        "Vertrag",
         "Kommentar",
     ]
     HEADER_TOOLTIPS = [
@@ -87,7 +87,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
         "Optionales Format: HH:MM, z. B. 14:15",
         "Geleistete Zeit (Bis - Von - beide Pausen), Format HH:MM",
         "Soll aus Stundenplan (Wochentag + Von), Format HH:MM",
-        "Soll gemaess Wochenstunden aus Vertrag (Wochentag), Format HH:MM",
+        "Soll nach Vertrag, Format HH:MM",
         "Freitext (max. 80 Zeichen)",
     ]
 
@@ -152,14 +152,18 @@ class ZeiteintragTableModel(QAbstractTableModel):
             if self._feiertag_fuer_datumtext(row.datum) is not None:
                 return feiertag_stern_icon()
             return None
-        if role == Qt.ToolTipRole and index.column() in (0, 1):
-            feiertag = self._feiertag_fuer_datumtext(row.datum)
-            if feiertag is None:
-                return None
-            tooltip = feiertag.feiertagsname
-            if feiertag.hinweis:
-                tooltip = f"{tooltip}\n{feiertag.hinweis}"
-            return tooltip
+        if role == Qt.ToolTipRole:
+            if index.column() == 10:
+                return self.HEADER_TOOLTIPS[10]
+            if index.column() in (0, 1):
+                feiertag = self._feiertag_fuer_datumtext(row.datum)
+                if feiertag is None:
+                    return None
+                tooltip = feiertag.feiertagsname
+                if feiertag.hinweis:
+                    tooltip = f"{tooltip}\n{feiertag.hinweis}"
+                return tooltip
+            return None
         if role == Qt.ForegroundRole:
             if index.row() in self._dirty_rows:
                 return QColor("#b71c1c")

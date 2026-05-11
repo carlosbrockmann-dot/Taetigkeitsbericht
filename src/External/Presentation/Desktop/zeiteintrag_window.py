@@ -156,7 +156,7 @@ class GruppenHeaderView(QHeaderView):
             ("Arbeitsphase", 2, 3),
             ("Pause", 4, 5),
             ("Pause 2", 6, 7),
-            ("Arbeitsstunden", 8, 9),
+            ("Arbeitsstunden", 8, 10),
         ]
         self.setDefaultAlignment(Qt.AlignCenter)
 
@@ -263,6 +263,19 @@ class ZeiteintragWindow(QMainWindow):
         self._speichern_button = QPushButton("Alle Zeilen speichern", self)
         self._status_label = QLabel("Bereit.", self)
         self._summen_label = QLabel("", self)
+        self._summen_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        self._author_label = QLabel("Author: Carlos Brockmann", self)
+        self._author_label.setAlignment(
+            Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter
+        )
+        author_mitte = QWidget(self)
+        author_mitte_layout = QHBoxLayout(author_mitte)
+        author_mitte_layout.setContentsMargins(0, 0, 0, 0)
+        author_mitte_layout.addStretch(1)
+        author_mitte_layout.addWidget(self._author_label)
+        author_mitte_layout.addStretch(1)
 
         toolbar_layout.addWidget(self._jahr_spin)
         toolbar_layout.addWidget(self._monat_combo)
@@ -296,7 +309,7 @@ class ZeiteintragWindow(QMainWindow):
         horizontal_header.resizeSection(7, 60)
         horizontal_header.resizeSection(8, 80)
         horizontal_header.resizeSection(9, 72)
-        horizontal_header.resizeSection(10, 110)
+        horizontal_header.resizeSection(10, 88)
         horizontal_header.resizeSection(11, 220)
         self._table.verticalHeader().setVisible(True)
 
@@ -304,7 +317,8 @@ class ZeiteintragWindow(QMainWindow):
         root_layout.addWidget(self._table)
         fuss_layout = QHBoxLayout()
         fuss_layout.addWidget(self._status_label, 1)
-        fuss_layout.addWidget(self._summen_label)
+        fuss_layout.addWidget(author_mitte, 1)
+        fuss_layout.addWidget(self._summen_label, 1)
         root_layout.addLayout(fuss_layout)
 
         self._tab_widget = QTabWidget(self)
