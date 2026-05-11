@@ -60,6 +60,8 @@ class ZeiteintragRow:
 
 
 class ZeiteintragTableModel(QAbstractTableModel):
+    _MAX_ANMERKUNG_LAENGE = 80
+
     HEADERS = [
         "Tag",
         "Datum",
@@ -211,6 +213,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
             return False
         elif index.column() == 1:
             row.datum = text
+            self._trage_feiertagsname_in_leeres_kommentar_ein(row)
         elif index.column() == 2:
             row.uhrzeit_von = text
         elif index.column() == 3:
@@ -273,6 +276,14 @@ class ZeiteintragTableModel(QAbstractTableModel):
         self.beginInsertRows(QModelIndex(), position, position)
         self._rows.insert(position, ZeiteintragRow(datum=datum))
         self.endInsertRows()
+        zeile = self._rows[position]
+        if self._trage_feiertagsname_in_leeres_kommentar_ein(zeile):
+            idx = self.index(position, 10)
+            self.dataChanged.emit(
+                idx,
+                idx,
+                [Qt.DisplayRole, Qt.EditRole, Qt.BackgroundRole],
+            )
         return position
 
     def remove_rows(self, row_indices: list[int]) -> None:
@@ -285,6 +296,18 @@ class ZeiteintragTableModel(QAbstractTableModel):
 
     def set_feiertag_nach_datum(self, mapping: dict[date, Feiertag]) -> None:
         self._feiertag_nach_datum = dict(mapping)
+
+    def ergaenze_feiertagsname_in_leerem_kommentar(self) -> None:
+        """Schreibt den Feiertagsnamen in die Kommentarspalte, wenn diese leer ist."""
+        for zeilen_index, row in enumerate(self._rows):
+            if not self._trage_feiertagsname_in_leeres_kommentar_ein(row):
+                continue
+            idx = self.index(zeilen_index, 10)
+            self.dataChanged.emit(
+                idx,
+                idx,
+                [Qt.DisplayRole, Qt.EditRole, Qt.BackgroundRole],
+            )
 
     def set_stundenplan_registry(self, registry: StundenplanRegistry | None) -> None:
         self._stundenplan_registry = registry
@@ -346,6 +369,18 @@ class ZeiteintragTableModel(QAbstractTableModel):
                 if m is not None:
                     soll += m
         return geleistet, soll
+
+    def summe_soll_nach_vertrag_minuten(self) -> int:
+        """Summe der in Spalte «Soll nach Vertrag» angezeigten Werte (alle Zeilen)."""
+        summe = 0
+        for row in self._rows:
+            txt = self._soll_nach_vertrag(row)
+            if not txt:
+                continue
+            m = self._parse_minutes(txt)
+            if m is not None:
+                summe += m
+        return summe
 
     @staticmethod
     def minuten_als_hh_mm(gesamt_minuten: int) -> str:
@@ -423,7 +458,17 @@ class ZeiteintragTableModel(QAbstractTableModel):
             d = datetime.strptime(datum_text, "%d.%m.%Y").date()
         except ValueError:
             return ""
-        return self._vertrag_stunden_nach_wochentag.get(d.isoweekday(), "")
+        if d.weekday() >= 5:
+            return ""
+        if self._feiertag_fuer_datumtext(datum_text) is not None:
+            return ""
+        txt = (self._vertrag_stunden_nach_wochentag.get(d.isoweekday(), "") or "").strip()
+        if not txt:
+            return ""
+        minuten = self._parse_minutes(txt)
+        if minuten is None or minuten <= 0:
+            return ""
+        return txt
 
     def _feiertag_fuer_datumtext(self, datum_text: str) -> Feiertag | None:
         text = datum_text.strip()
@@ -434,6 +479,18 @@ class ZeiteintragTableModel(QAbstractTableModel):
         except ValueError:
             return None
         return self._feiertag_nach_datum.get(d)
+
+    def _trage_feiertagsname_in_leeres_kommentar_ein(self, row: ZeiteintragRow) -> bool:
+        if row.anmerkung.strip():
+            return False
+        feiertag = self._feiertag_fuer_datumtext(row.datum)
+        if feiertag is None:
+            return False
+        name = feiertag.feiertagsname.strip()
+        if not name:
+            return False
+        row.anmerkung = name[: self._MAX_ANMERKUNG_LAENGE]
+        return True
 
     def ist_feiertag(self, datum_text: str) -> bool:
         return self._feiertag_fuer_datumtext(datum_text) is not None

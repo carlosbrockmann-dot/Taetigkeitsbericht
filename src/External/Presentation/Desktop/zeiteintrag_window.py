@@ -156,6 +156,7 @@ class GruppenHeaderView(QHeaderView):
             ("Arbeitsphase", 2, 3),
             ("Pause", 4, 5),
             ("Pause 2", 6, 7),
+            ("Arbeitsstunden", 8, 9),
         ]
         self.setDefaultAlignment(Qt.AlignCenter)
 
@@ -206,7 +207,10 @@ class GruppenHeaderView(QHeaderView):
         top_option.rect = gruppen_rect
         top_option.section = logical_index
         top_option.text = label
+        painter.save()
+        painter.setClipRect(gruppen_rect)
         self.style().drawControl(QStyle.ControlElement.CE_Header, top_option, painter, self)
+        painter.restore()
 
 
 class ZeiteintragWindow(QMainWindow):
@@ -229,7 +233,7 @@ class ZeiteintragWindow(QMainWindow):
         self._suspend_dirty_tracking = False
         self._baseline_rows: list[tuple[object, str, str, str, str, str, str, str, str]] = []
         self.setWindowTitle("Taetigkeitsbericht - Erfassung")
-        self.resize(1100, 640)
+        self.resize(1200, 640)
         self._build_ui()
         self._bind_view_model()
         self._load_selected_period()
@@ -338,9 +342,13 @@ class ZeiteintragWindow(QMainWindow):
     def _aktualisiere_summen_anzeige(self) -> None:
         model = self._view_model.table_model
         g_min, s_min = model.summen_geleistet_und_soll_minuten()
+        sv_min = model.summe_soll_nach_vertrag_minuten()
         g_txt = ZeiteintragTableModel.minuten_als_hh_mm(g_min)
         s_txt = ZeiteintragTableModel.minuten_als_hh_mm(s_min)
-        self._summen_label.setText(f"Geleistet: {g_txt}   Soll: {s_txt}")
+        sv_txt = ZeiteintragTableModel.minuten_als_hh_mm(sv_min)
+        self._summen_label.setText(
+            f"Geleistet: {g_txt}   |   Soll nach Stundenplan: {s_txt}   |   Soll nach Vertrag: {sv_txt}"
+        )
 
     def _on_laden(self) -> None:
         self._load_selected_period()

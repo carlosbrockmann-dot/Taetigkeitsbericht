@@ -100,6 +100,7 @@ class ZeiteintragViewModel(QObject):
         self._table_model.set_feiertag_nach_datum(
             self._feiertag_registry.snapshot_fuer_monat(jahr, monat)
         )
+        self._table_model.ergaenze_feiertagsname_in_leerem_kommentar()
         self._geladenes_jahr = jahr
         self._geladenes_monat = monat
         self._zu_loeschende_ids.clear()
@@ -118,6 +119,7 @@ class ZeiteintragViewModel(QObject):
                 self._geladenes_monat,
             )
         )
+        self._table_model.ergaenze_feiertagsname_in_leerem_kommentar()
         self._table_model.feiertag_darstellung_aktualisieren()
 
     def _auf_stundenplan_geaendert(self) -> None:
