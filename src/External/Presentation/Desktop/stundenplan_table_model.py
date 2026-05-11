@@ -29,8 +29,10 @@ class StundenplanRow:
     wochentag: int = 1
     uhrzeit_von: str = ""
     uhrzeit_bis: str = ""
-    unterbrechung_beginn: str = ""
-    unterbrechung_ende: str = ""
+    pause_beginn: str = ""
+    pause_ende: str = ""
+    pause2_beginn: str = ""
+    pause2_ende: str = ""
     anmerkung: str = ""
 
 
@@ -39,8 +41,10 @@ class StundenplanTableModel(QAbstractTableModel):
         "Wochentag",
         "Von",
         "Bis",
-        "Pause Von",
-        "Pause Bis",
+        "Pause 1 Von",
+        "Pause 1 Bis",
+        "Pause 2 Von",
+        "Pause 2 Bis",
         "Soll",
         "Kommentar",
     ]
@@ -50,7 +54,9 @@ class StundenplanTableModel(QAbstractTableModel):
         "Erwartetes Format: HH:MM, z. B. 17:00",
         "Optionales Format: HH:MM, z. B. 12:00",
         "Optionales Format: HH:MM, z. B. 12:30",
-        "Zu leistende Zeit (Bis - Von - Pause), Format HH:MM",
+        "Optionales Format: HH:MM, z. B. 14:00",
+        "Optionales Format: HH:MM, z. B. 14:15",
+        "Zu leistende Zeit (Bis - Von - beide Pausen), Format HH:MM",
         "Freitext (max. 80 Zeichen)",
     ]
 
@@ -122,17 +128,23 @@ class StundenplanTableModel(QAbstractTableModel):
             case 2:
                 return row.uhrzeit_bis
             case 3:
-                return row.unterbrechung_beginn
+                return row.pause_beginn
             case 4:
-                return row.unterbrechung_ende
+                return row.pause_ende
             case 5:
+                return row.pause2_beginn
+            case 6:
+                return row.pause2_ende
+            case 7:
                 return self._calculate_zuleistende_zeit(
                     row.uhrzeit_von,
                     row.uhrzeit_bis,
-                    row.unterbrechung_beginn,
-                    row.unterbrechung_ende,
+                    row.pause_beginn,
+                    row.pause_ende,
+                    row.pause2_beginn,
+                    row.pause2_ende,
                 )
-            case 6:
+            case 8:
                 return row.anmerkung
             case _:
                 return None
@@ -155,26 +167,30 @@ class StundenplanTableModel(QAbstractTableModel):
             return True
 
         text = str(value)
-        if index.column() != 6:
+        if index.column() != 8:
             text = text.strip()
         if index.column() == 1:
             row.uhrzeit_von = text
         elif index.column() == 2:
             row.uhrzeit_bis = text
         elif index.column() == 3:
-            row.unterbrechung_beginn = text
+            row.pause_beginn = text
         elif index.column() == 4:
-            row.unterbrechung_ende = text
+            row.pause_ende = text
         elif index.column() == 5:
-            return False
+            row.pause2_beginn = text
         elif index.column() == 6:
+            row.pause2_ende = text
+        elif index.column() == 7:
+            return False
+        elif index.column() == 8:
             row.anmerkung = text
         else:
             return False
 
-        if index.column() in (1, 2, 3, 4):
+        if index.column() in (1, 2, 3, 4, 5, 6):
             left = self.index(index.row(), index.column())
-            right = self.index(index.row(), 5)
+            right = self.index(index.row(), 7)
             self.dataChanged.emit(
                 left, right, [Qt.DisplayRole, Qt.EditRole, Qt.BackgroundRole]
             )
@@ -186,7 +202,7 @@ class StundenplanTableModel(QAbstractTableModel):
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
         if not index.isValid():
             return Qt.ItemIsEnabled
-        if index.column() == 5:
+        if index.column() == 7:
             return Qt.ItemIsSelectable | Qt.ItemIsEnabled
         return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
 
@@ -221,6 +237,22 @@ class StundenplanTableModel(QAbstractTableModel):
     def is_row_dirty(self, row_index: int) -> bool:
         return row_index in self._dirty_rows
 
+    def summe_zuleistende_minuten(self) -> int:
+        """Summe der Spalte Soll (zu leistende Zeit) ueber alle Zeilen."""
+        summe = 0
+        for row in self._rows:
+            netto = netto_arbeitsminuten(
+                row.uhrzeit_von,
+                row.uhrzeit_bis,
+                row.pause_beginn,
+                row.pause_ende,
+                row.pause2_beginn,
+                row.pause2_ende,
+            )
+            if netto is not None:
+                summe += netto
+        return summe
+
     @staticmethod
     def _coerce_wochentag(value: object) -> int | None:
         if isinstance(value, int) and 1 <= value <= 7:
@@ -244,8 +276,17 @@ class StundenplanTableModel(QAbstractTableModel):
         uhrzeit_bis: str,
         pause_von: str,
         pause_bis: str,
+        pause2_von: str = "",
+        pause2_bis: str = "",
     ) -> str:
-        netto = netto_arbeitsminuten(uhrzeit_von, uhrzeit_bis, pause_von, pause_bis)
+        netto = netto_arbeitsminuten(
+            uhrzeit_von,
+            uhrzeit_bis,
+            pause_von,
+            pause_bis,
+            pause2_von,
+            pause2_bis,
+        )
         if netto is None:
             return ""
         return minuten_als_hh_mm(netto)

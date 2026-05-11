@@ -17,8 +17,10 @@ def _row_to_domain(row: ZeiteintragTable) -> Zeiteintrag:
         datum=row.datum,
         uhrzeit_von=row.uhrzeit_von,
         uhrzeit_bis=row.uhrzeit_bis,
-        unterbrechung_beginn=row.unterbrechung_beginn,
-        unterbrechung_ende=row.unterbrechung_ende,
+        pause_beginn=row.pause_beginn,
+        pause_ende=row.pause_ende,
+        pause2_beginn=row.pause2_beginn,
+        pause2_ende=row.pause2_ende,
         anmerkung=row.anmerkung,
     )
 
@@ -36,8 +38,10 @@ class SqlZeiteintragRepository:
                 datum=eintrag.datum,
                 uhrzeit_von=eintrag.uhrzeit_von,
                 uhrzeit_bis=eintrag.uhrzeit_bis,
-                unterbrechung_beginn=eintrag.unterbrechung_beginn,
-                unterbrechung_ende=eintrag.unterbrechung_ende,
+                pause_beginn=eintrag.pause_beginn,
+                pause_ende=eintrag.pause_ende,
+                pause2_beginn=eintrag.pause2_beginn,
+                pause2_ende=eintrag.pause2_ende,
                 anmerkung=eintrag.anmerkung,
             )
             self._session.add(row)
@@ -45,8 +49,10 @@ class SqlZeiteintragRepository:
             row.datum = eintrag.datum
             row.uhrzeit_von = eintrag.uhrzeit_von
             row.uhrzeit_bis = eintrag.uhrzeit_bis
-            row.unterbrechung_beginn = eintrag.unterbrechung_beginn
-            row.unterbrechung_ende = eintrag.unterbrechung_ende
+            row.pause_beginn = eintrag.pause_beginn
+            row.pause_ende = eintrag.pause_ende
+            row.pause2_beginn = eintrag.pause2_beginn
+            row.pause2_ende = eintrag.pause2_ende
             row.anmerkung = eintrag.anmerkung
         self._session.commit()
         self._session.refresh(row)

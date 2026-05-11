@@ -69,10 +69,10 @@ class LiveCommitDelegate(QStyledItemDelegate):
     def setModelData(self, editor, model, index):  # noqa: N802
         if isinstance(editor, QLineEdit):
             text = editor.text()
-            if index.column() != 8:
+            if index.column() != 10:
                 text = text.strip()
             is_live_commit = bool(editor.property("_live_commit"))
-            if not is_live_commit and index.column() in (2, 3, 4, 5) and text.isdigit():
+            if not is_live_commit and index.column() in (2, 3, 4, 5, 6, 7) and text.isdigit():
                 hour = int(text)
                 if 0 <= hour <= 23:
                     text = f"{hour:02d}:00"
@@ -162,7 +162,7 @@ class ZeiteintragWindow(QMainWindow):
         self._current_loaded_month: int | None = None
         self._ignore_period_change = False
         self._suspend_dirty_tracking = False
-        self._baseline_rows: list[tuple[object, str, str, str, str, str, str]] = []
+        self._baseline_rows: list[tuple[object, str, str, str, str, str, str, str, str]] = []
         self.setWindowTitle("Taetigkeitsbericht - Erfassung")
         self.resize(1100, 640)
         self._build_ui()
@@ -214,8 +214,12 @@ class ZeiteintragWindow(QMainWindow):
         horizontal_header = self._table.horizontalHeader()
         horizontal_header.setStretchLastSection(True)
         horizontal_header.resizeSection(0, 50)
-        horizontal_header.resizeSection(6, 80)
-        horizontal_header.resizeSection(7, 72)
+        horizontal_header.resizeSection(4, 62)
+        horizontal_header.resizeSection(5, 62)
+        horizontal_header.resizeSection(6, 62)
+        horizontal_header.resizeSection(7, 62)
+        horizontal_header.resizeSection(8, 80)
+        horizontal_header.resizeSection(9, 72)
         self._table.verticalHeader().setVisible(True)
 
         root_layout.addLayout(toolbar_layout)
@@ -461,6 +465,9 @@ class ZeiteintragWindow(QMainWindow):
         except ValueError:
             return
 
+        if model.ist_feiertag(datum_text):
+            return
+
         passende_stundenplan_zeilen = self._stundenplan_view.zeilen_fuer_wochentag(
             datum.isoweekday()
         )
@@ -483,9 +490,11 @@ class ZeiteintragWindow(QMainWindow):
         feld_zu_spalte = {
             "uhrzeit_von": 2,
             "uhrzeit_bis": 3,
-            "unterbrechung_beginn": 4,
-            "unterbrechung_ende": 5,
-            "anmerkung": 8,
+            "pause_beginn": 4,
+            "pause_ende": 5,
+            "pause2_beginn": 6,
+            "pause2_ende": 7,
+            "anmerkung": 10,
         }
         for feldname, spalte in feld_zu_spalte.items():
             zielwert = getattr(row, feldname).strip()
@@ -508,14 +517,16 @@ class ZeiteintragWindow(QMainWindow):
     def _capture_baseline(self) -> None:
         self._baseline_rows = self._current_rows_snapshot()
 
-    def _current_rows_snapshot(self) -> list[tuple[object, str, str, str, str, str, str]]:
-        snapshot: list[tuple[object, str, str, str, str, str, str]] = []
+    def _current_rows_snapshot(self) -> list[tuple[object, str, str, str, str, str, str, str, str]]:
+        snapshot: list[tuple[object, str, str, str, str, str, str, str, str]] = []
         for row in self._view_model.table_model.rows:
             datum = row.datum.strip()
             uhrzeit_von = row.uhrzeit_von.strip()
             uhrzeit_bis = row.uhrzeit_bis.strip()
-            unterbrechung_beginn = row.unterbrechung_beginn.strip()
-            unterbrechung_ende = row.unterbrechung_ende.strip()
+            pause_beginn = row.pause_beginn.strip()
+            pause_ende = row.pause_ende.strip()
+            pause2_beginn = row.pause2_beginn.strip()
+            pause2_ende = row.pause2_ende.strip()
             anmerkung = row.anmerkung.strip()
             if not self._is_row_relevant_for_unsaved(uhrzeit_von, uhrzeit_bis):
                 continue
@@ -525,8 +536,10 @@ class ZeiteintragWindow(QMainWindow):
                     datum,
                     uhrzeit_von,
                     uhrzeit_bis,
-                    unterbrechung_beginn,
-                    unterbrechung_ende,
+                    pause_beginn,
+                    pause_ende,
+                    pause2_beginn,
+                    pause2_ende,
                     anmerkung,
                 )
             )
@@ -537,9 +550,28 @@ class ZeiteintragWindow(QMainWindow):
         self._view_model.table_model.set_dirty_rows(self._compute_dirty_row_indices())
 
     def _compute_dirty_row_indices(self) -> set[int]:
-        baseline_by_id: dict[UUID, tuple[str, str, str, str, str, str]] = {
-            row_id: (datum, uhrzeit_von, uhrzeit_bis, unterbrechung_beginn, unterbrechung_ende, anmerkung)
-            for row_id, datum, uhrzeit_von, uhrzeit_bis, unterbrechung_beginn, unterbrechung_ende, anmerkung in self._baseline_rows
+        baseline_by_id: dict[UUID, tuple[str, str, str, str, str, str, str, str]] = {
+            row_id: (
+                datum,
+                uhrzeit_von,
+                uhrzeit_bis,
+                pause_beginn,
+                pause_ende,
+                pause2_beginn,
+                pause2_ende,
+                anmerkung,
+            )
+            for (
+                row_id,
+                datum,
+                uhrzeit_von,
+                uhrzeit_bis,
+                pause_beginn,
+                pause_ende,
+                pause2_beginn,
+                pause2_ende,
+                anmerkung,
+            ) in self._baseline_rows
             if isinstance(row_id, UUID)
         }
         dirty_rows: set[int] = set()
@@ -547,8 +579,10 @@ class ZeiteintragWindow(QMainWindow):
             datum = row.datum.strip()
             uhrzeit_von = row.uhrzeit_von.strip()
             uhrzeit_bis = row.uhrzeit_bis.strip()
-            unterbrechung_beginn = row.unterbrechung_beginn.strip()
-            unterbrechung_ende = row.unterbrechung_ende.strip()
+            pause_beginn = row.pause_beginn.strip()
+            pause_ende = row.pause_ende.strip()
+            pause2_beginn = row.pause2_beginn.strip()
+            pause2_ende = row.pause2_ende.strip()
             anmerkung = row.anmerkung.strip()
 
             if not self._is_row_relevant_for_unsaved(uhrzeit_von, uhrzeit_bis):
@@ -563,8 +597,10 @@ class ZeiteintragWindow(QMainWindow):
                 datum,
                 uhrzeit_von,
                 uhrzeit_bis,
-                unterbrechung_beginn,
-                unterbrechung_ende,
+                pause_beginn,
+                pause_ende,
+                pause2_beginn,
+                pause2_ende,
                 anmerkung,
             )
             if baseline_values != current_values:

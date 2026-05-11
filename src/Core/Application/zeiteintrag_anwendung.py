@@ -30,8 +30,10 @@ class ZeiteintragAnwendung:
             datum=datum,
             uhrzeit_von=stundenplan_eintrag.uhrzeit_von,
             uhrzeit_bis=stundenplan_eintrag.uhrzeit_bis,
-            unterbrechung_beginn=stundenplan_eintrag.unterbrechung_beginn,
-            unterbrechung_ende=stundenplan_eintrag.unterbrechung_ende,
+            pause_beginn=stundenplan_eintrag.pause_beginn,
+            pause_ende=stundenplan_eintrag.pause_ende,
+            pause2_beginn=stundenplan_eintrag.pause2_beginn,
+            pause2_ende=stundenplan_eintrag.pause2_ende,
             anmerkung=stundenplan_eintrag.anmerkung,
         )
         return self.erfasse(zeiteintrag)

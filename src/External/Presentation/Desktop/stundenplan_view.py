@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from External.Presentation.Desktop.arbeitszeit_berechnung import minuten_als_hh_mm
 from External.Presentation.Desktop.stundenplan_table_model import (
     WOCHENTAG_LABELS,
     StundenplanRow,
@@ -62,10 +63,10 @@ class StundenplanLiveCommitDelegate(QStyledItemDelegate):
     def setModelData(self, editor, model, index):  # noqa: N802
         if isinstance(editor, QLineEdit):
             text = editor.text()
-            if index.column() != 6:
+            if index.column() != 8:
                 text = text.strip()
             is_live_commit = bool(editor.property("_live_commit"))
-            if not is_live_commit and index.column() in (1, 2, 3, 4) and text.isdigit():
+            if not is_live_commit and index.column() in (1, 2, 3, 4, 5, 6) and text.isdigit():
                 hour = int(text)
                 if 0 <= hour <= 23:
                     text = f"{hour:02d}:00"
@@ -105,7 +106,7 @@ class StundenplanView(QWidget):
         self._view_model = view_model
         self._has_unsaved_changes = False
         self._suspend_dirty_tracking = False
-        self._baseline_rows: list[tuple[object, int, str, str, str, str, str]] = []
+        self._baseline_rows: list[tuple[object, int, str, str, str, str, str, str, str]] = []
         self._build_ui()
         self._bind_view_model()
         self._lade_alle()
@@ -129,6 +130,7 @@ class StundenplanView(QWidget):
         self._zeile_loeschen_button = QPushButton("Markierte Zeile(n) loeschen", self)
         self._speichern_button = QPushButton("Alle Zeilen speichern", self)
         self._status_label = QLabel("Bereit.", self)
+        self._summen_label = QLabel("", self)
 
         toolbar_layout.addStretch()
         toolbar_layout.addWidget(self._zeile_hinzufuegen_button)
@@ -152,12 +154,19 @@ class StundenplanView(QWidget):
         horizontal_header = self._table.horizontalHeader()
         horizontal_header.setStretchLastSection(True)
         horizontal_header.resizeSection(0, 70)
-        horizontal_header.resizeSection(5, 80)
+        horizontal_header.resizeSection(3, 62)
+        horizontal_header.resizeSection(4, 62)
+        horizontal_header.resizeSection(5, 62)
+        horizontal_header.resizeSection(6, 62)
+        horizontal_header.resizeSection(7, 80)
         self._table.verticalHeader().setVisible(True)
 
         root_layout.addLayout(toolbar_layout)
         root_layout.addWidget(self._table)
-        root_layout.addWidget(self._status_label)
+        fuss_layout = QHBoxLayout()
+        fuss_layout.addWidget(self._status_label, 1)
+        fuss_layout.addWidget(self._summen_label)
+        root_layout.addLayout(fuss_layout)
 
         self._zeile_hinzufuegen_button.clicked.connect(self._on_zeile_hinzufuegen)
         self._zeile_loeschen_button.clicked.connect(self._on_zeile_loeschen)
@@ -181,6 +190,12 @@ class StundenplanView(QWidget):
         model.dataChanged.connect(self._auf_stundenplan_tabelle_inhalt)
         model.rowsInserted.connect(self._auf_stundenplan_tabelle_inhalt)
         model.rowsRemoved.connect(self._auf_stundenplan_tabelle_inhalt)
+        self._aktualisiere_summen_anzeige()
+
+    def _aktualisiere_summen_anzeige(self) -> None:
+        summe_min = self._view_model.table_model.summe_zuleistende_minuten()
+        txt = minuten_als_hh_mm(summe_min)
+        self._summen_label.setText(f"Soll: {txt}")
 
     def _lade_alle(self) -> None:
         self._suspend_dirty_tracking = True
@@ -248,6 +263,7 @@ class StundenplanView(QWidget):
         QMessageBox.warning(self, "Fehler beim Speichern/Laden", message)
 
     def _on_model_mutated(self, *_args) -> None:
+        self._aktualisiere_summen_anzeige()
         if self._suspend_dirty_tracking:
             return
         self._update_dirty_state()
@@ -260,8 +276,8 @@ class StundenplanView(QWidget):
     def _capture_baseline(self) -> None:
         self._baseline_rows = self._current_rows_snapshot()
 
-    def _current_rows_snapshot(self) -> list[tuple[object, int, str, str, str, str, str]]:
-        snapshot: list[tuple[object, int, str, str, str, str, str]] = []
+    def _current_rows_snapshot(self) -> list[tuple[object, int, str, str, str, str, str, str, str]]:
+        snapshot: list[tuple[object, int, str, str, str, str, str, str, str]] = []
         for row in self._view_model.table_model.rows:
             uhrzeit_von = row.uhrzeit_von.strip()
             uhrzeit_bis = row.uhrzeit_bis.strip()
@@ -273,8 +289,10 @@ class StundenplanView(QWidget):
                     row.wochentag,
                     uhrzeit_von,
                     uhrzeit_bis,
-                    row.unterbrechung_beginn.strip(),
-                    row.unterbrechung_ende.strip(),
+                    row.pause_beginn.strip(),
+                    row.pause_ende.strip(),
+                    row.pause2_beginn.strip(),
+                    row.pause2_ende.strip(),
                     row.anmerkung.strip(),
                 )
             )
@@ -289,9 +307,28 @@ class StundenplanView(QWidget):
         self._view_model.table_model.set_dirty_rows(self._compute_dirty_row_indices())
 
     def _compute_dirty_row_indices(self) -> set[int]:
-        baseline_by_id: dict[int, tuple[int, str, str, str, str, str]] = {
-            row_id: (wochentag, uhrzeit_von, uhrzeit_bis, pause_von, pause_bis, anmerkung)
-            for row_id, wochentag, uhrzeit_von, uhrzeit_bis, pause_von, pause_bis, anmerkung in self._baseline_rows
+        baseline_by_id: dict[int, tuple[int, str, str, str, str, str, str, str]] = {
+            row_id: (
+                wochentag,
+                uhrzeit_von,
+                uhrzeit_bis,
+                pause_von,
+                pause_bis,
+                pause2_von,
+                pause2_bis,
+                anmerkung,
+            )
+            for (
+                row_id,
+                wochentag,
+                uhrzeit_von,
+                uhrzeit_bis,
+                pause_von,
+                pause_bis,
+                pause2_von,
+                pause2_bis,
+                anmerkung,
+            ) in self._baseline_rows
             if isinstance(row_id, int)
         }
         dirty_rows: set[int] = set()
@@ -308,8 +345,10 @@ class StundenplanView(QWidget):
                 row.wochentag,
                 uhrzeit_von,
                 uhrzeit_bis,
-                row.unterbrechung_beginn.strip(),
-                row.unterbrechung_ende.strip(),
+                row.pause_beginn.strip(),
+                row.pause_ende.strip(),
+                row.pause2_beginn.strip(),
+                row.pause2_ende.strip(),
                 row.anmerkung.strip(),
             )
             if baseline_values != current_values:

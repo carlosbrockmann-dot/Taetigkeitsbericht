@@ -6,3 +6,20 @@ version = "1.0.0"
 [database]
 type = "sqlite"
 path = "myapp.db"
+
+
+
+[sollstunden]
+wochenstunden = [
+    { wochentag = 1, stunden = 4, name = "Montag" },
+    { wochentag = 2, stunden = 4, name = "Dienstag" },
+    { wochentag = 3, stunden = 4, name = "Mittwoch" },
+    { wochentag = 4, stunden = 4, name = "Donnerstag" },
+    { wochentag = 5, stunden = 0, name = "Freitag" },
+    { wochentag = 6, stunden = 0, name = "Samstag" },
+    { wochentag = 7, stunden = 0, name = "Sonntag" },
+]
+wochenstunden_regel = 40
+wochenstunden_max = 48
+wochenstunden_summe = 16
+

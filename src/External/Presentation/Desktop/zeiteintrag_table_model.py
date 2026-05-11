@@ -52,8 +52,10 @@ class ZeiteintragRow:
     datum: str = ""
     uhrzeit_von: str = ""
     uhrzeit_bis: str = ""
-    unterbrechung_beginn: str = ""
-    unterbrechung_ende: str = ""
+    pause_beginn: str = ""
+    pause_ende: str = ""
+    pause2_beginn: str = ""
+    pause2_ende: str = ""
     anmerkung: str = ""
 
 
@@ -63,8 +65,10 @@ class ZeiteintragTableModel(QAbstractTableModel):
         "Datum",
         "Von",
         "Bis",
-        "Pause Von",
-        "Pause Bis",
+        "Pause 1 Von",
+        "Pause 1 Bis",
+        "Pause 2 Von",
+        "Pause 2 Bis",
         "Geleistet",
         "Soll",
         "Kommentar",
@@ -76,7 +80,9 @@ class ZeiteintragTableModel(QAbstractTableModel):
         "Erwartetes Format: HH:MM, z. B. 17:00",
         "Optionales Format: HH:MM, z. B. 12:00",
         "Optionales Format: HH:MM, z. B. 12:30",
-        "Geleistete Zeit (Bis - Von - Pause), Format HH:MM",
+        "Optionales Format: HH:MM, z. B. 14:00",
+        "Optionales Format: HH:MM, z. B. 14:15",
+        "Geleistete Zeit (Bis - Von - beide Pausen), Format HH:MM",
         "Soll aus Stundenplan (Wochentag + Von), Format HH:MM",
         "Freitext (max. 80 Zeichen)",
     ]
@@ -165,19 +171,25 @@ class ZeiteintragTableModel(QAbstractTableModel):
             case 3:
                 return row.uhrzeit_bis
             case 4:
-                return row.unterbrechung_beginn
+                return row.pause_beginn
             case 5:
-                return row.unterbrechung_ende
+                return row.pause_ende
             case 6:
+                return row.pause2_beginn
+            case 7:
+                return row.pause2_ende
+            case 8:
                 return self._calculate_geleistete_zeit(
                     row.uhrzeit_von,
                     row.uhrzeit_bis,
-                    row.unterbrechung_beginn,
-                    row.unterbrechung_ende,
+                    row.pause_beginn,
+                    row.pause_ende,
+                    row.pause2_beginn,
+                    row.pause2_ende,
                 )
-            case 7:
+            case 9:
                 return self._soll_aus_stundenplan(row)
-            case 8:
+            case 10:
                 return row.anmerkung
             case _:
                 return None
@@ -188,7 +200,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
 
         row = self._rows[index.row()]
         text = str(value)
-        if index.column() != 8:
+        if index.column() != 10:
             text = text.strip()
         if index.column() == 0:
             return False
@@ -199,12 +211,16 @@ class ZeiteintragTableModel(QAbstractTableModel):
         elif index.column() == 3:
             row.uhrzeit_bis = text
         elif index.column() == 4:
-            row.unterbrechung_beginn = text
+            row.pause_beginn = text
         elif index.column() == 5:
-            row.unterbrechung_ende = text
-        elif index.column() in (6, 7):
+            row.pause_ende = text
+        elif index.column() == 6:
+            row.pause2_beginn = text
+        elif index.column() == 7:
+            row.pause2_ende = text
+        elif index.column() in (8, 9):
             return False
-        elif index.column() == 8:
+        elif index.column() == 10:
             row.anmerkung = text
         else:
             return False
@@ -226,9 +242,9 @@ class ZeiteintragTableModel(QAbstractTableModel):
             self.headerDataChanged.emit(Qt.Vertical, index.row(), index.row())
             return True
 
-        if index.column() in (2, 3, 4, 5):
+        if index.column() in (2, 3, 4, 5, 6, 7):
             left = self.index(index.row(), index.column())
-            right = self.index(index.row(), 7)
+            right = self.index(index.row(), 9)
             self.dataChanged.emit(
                 left, right, [Qt.DisplayRole, Qt.EditRole, Qt.BackgroundRole]
             )
@@ -242,7 +258,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
         if not index.isValid():
             return Qt.ItemIsEnabled
-        if index.column() in (0, 6, 7):
+        if index.column() in (0, 8, 9):
             return Qt.ItemIsSelectable | Qt.ItemIsEnabled
         return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
 
@@ -272,7 +288,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
         if not self._rows:
             return
         for r in range(len(self._rows)):
-            idx = self.index(r, 7)
+            idx = self.index(r, 9)
             self.dataChanged.emit(idx, idx, [Qt.DisplayRole])
 
     def feiertag_darstellung_aktualisieren(self) -> None:
@@ -307,8 +323,10 @@ class ZeiteintragTableModel(QAbstractTableModel):
             gz = self._calculate_geleistete_zeit(
                 row.uhrzeit_von,
                 row.uhrzeit_bis,
-                row.unterbrechung_beginn,
-                row.unterbrechung_ende,
+                row.pause_beginn,
+                row.pause_ende,
+                row.pause2_beginn,
+                row.pause2_ende,
             )
             if gz:
                 m = self._parse_minutes(gz)
@@ -331,8 +349,17 @@ class ZeiteintragTableModel(QAbstractTableModel):
         uhrzeit_bis: str,
         pause_von: str,
         pause_bis: str,
+        pause2_von: str = "",
+        pause2_bis: str = "",
     ) -> str:
-        netto = netto_arbeitsminuten(uhrzeit_von, uhrzeit_bis, pause_von, pause_bis)
+        netto = netto_arbeitsminuten(
+            uhrzeit_von,
+            uhrzeit_bis,
+            pause_von,
+            pause_bis,
+            pause2_von,
+            pause2_bis,
+        )
         if netto is None:
             return ""
         return minuten_als_hh_mm(netto)
@@ -389,6 +416,9 @@ class ZeiteintragTableModel(QAbstractTableModel):
         except ValueError:
             return None
         return self._feiertag_nach_datum.get(d)
+
+    def ist_feiertag(self, datum_text: str) -> bool:
+        return self._feiertag_fuer_datumtext(datum_text) is not None
 
     @staticmethod
     def _is_weekend_date(datum_text: str) -> bool:

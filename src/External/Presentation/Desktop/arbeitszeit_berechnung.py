@@ -41,6 +41,8 @@ def netto_arbeitsminuten(
     uhrzeit_bis: str,
     pause_von: str,
     pause_bis: str,
+    pause2_von: str = "",
+    pause2_bis: str = "",
 ) -> int | None:
     """Arbeitszeit netto: (Bis - Von) minus Ueberlappung mit [Pause Von, Pause Bis].
 
@@ -54,13 +56,18 @@ def netto_arbeitsminuten(
     if bis_m <= von_m:
         return None
     brutto = bis_m - von_m
-    pv = parse_uhrzeit_minuten(pause_von)
-    pb = parse_uhrzeit_minuten(pause_bis)
-    if pv is not None and pb is not None and pb > pv:
-        pause_im_block_anfang = max(von_m, pv)
-        pause_im_block_ende = min(bis_m, pb)
-        if pause_im_block_ende > pause_im_block_anfang:
-            brutto -= pause_im_block_ende - pause_im_block_anfang
+    pausen = (
+        (pause_von, pause_bis),
+        (pause2_von, pause2_bis),
+    )
+    for pause_start, pause_ende in pausen:
+        pv = parse_uhrzeit_minuten(pause_start)
+        pb = parse_uhrzeit_minuten(pause_ende)
+        if pv is not None and pb is not None and pb > pv:
+            pause_im_block_anfang = max(von_m, pv)
+            pause_im_block_ende = min(bis_m, pb)
+            if pause_im_block_ende > pause_im_block_anfang:
+                brutto -= pause_im_block_ende - pause_im_block_anfang
     if brutto <= 0:
         return None
     return brutto

@@ -28,17 +28,27 @@ class StundenplanRegistry(QObject):
             von_s = eintrag.uhrzeit_von.strftime("%H:%M")
             bis_s = eintrag.uhrzeit_bis.strftime("%H:%M")
             pause_von = (
-                eintrag.unterbrechung_beginn.strftime("%H:%M")
-                if eintrag.unterbrechung_beginn
+                eintrag.pause_beginn.strftime("%H:%M")
+                if eintrag.pause_beginn
                 else ""
             )
             pause_bis = (
-                eintrag.unterbrechung_ende.strftime("%H:%M")
-                if eintrag.unterbrechung_ende
+                eintrag.pause_ende.strftime("%H:%M")
+                if eintrag.pause_ende
+                else ""
+            )
+            pause2_von = (
+                eintrag.pause2_beginn.strftime("%H:%M")
+                if eintrag.pause2_beginn
+                else ""
+            )
+            pause2_bis = (
+                eintrag.pause2_ende.strftime("%H:%M")
+                if eintrag.pause2_ende
                 else ""
             )
             soll = StundenplanTableModel._calculate_zuleistende_zeit(
-                von_s, bis_s, pause_von, pause_bis
+                von_s, bis_s, pause_von, pause_bis, pause2_von, pause2_bis
             )
             schluessel = (eintrag.wochentag, self._normalisiere_uhrzeit(von_s))
             if soll:
@@ -58,8 +68,10 @@ class StundenplanRegistry(QObject):
             soll = StundenplanTableModel._calculate_zuleistende_zeit(
                 row.uhrzeit_von,
                 row.uhrzeit_bis,
-                row.unterbrechung_beginn,
-                row.unterbrechung_ende,
+                row.pause_beginn,
+                row.pause_ende,
+                row.pause2_beginn,
+                row.pause2_ende,
             )
             schluessel = (row.wochentag, self._normalisiere_uhrzeit(row.uhrzeit_von))
             if soll:

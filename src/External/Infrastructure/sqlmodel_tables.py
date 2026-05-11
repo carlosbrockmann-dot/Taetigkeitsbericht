@@ -14,8 +14,10 @@ class ZeiteintragTable(SQLModel, table=True):
     datum: date
     uhrzeit_von: time
     uhrzeit_bis: time
-    unterbrechung_beginn: Optional[time] = None
-    unterbrechung_ende: Optional[time] = None
+    pause_beginn: Optional[time] = None
+    pause_ende: Optional[time] = None
+    pause2_beginn: Optional[time] = None
+    pause2_ende: Optional[time] = None
     anmerkung: Optional[str] = Field(default=None, max_length=80)
 
 
@@ -26,8 +28,10 @@ class StundenplanTable(SQLModel, table=True):
     wochentag: int = Field(ge=1, le=7)
     uhrzeit_von: time
     uhrzeit_bis: time
-    unterbrechung_beginn: Optional[time] = None
-    unterbrechung_ende: Optional[time] = None
+    pause_beginn: Optional[time] = None
+    pause_ende: Optional[time] = None
+    pause2_beginn: Optional[time] = None
+    pause2_ende: Optional[time] = None
     anmerkung: Optional[str] = Field(default=None, max_length=80)
 
 

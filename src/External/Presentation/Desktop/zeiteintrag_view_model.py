@@ -153,8 +153,10 @@ class ZeiteintragViewModel(QObject):
                     datum=self._parse_date(row.datum),
                     uhrzeit_von=self._parse_time(row.uhrzeit_von, "uhrzeit_von"),
                     uhrzeit_bis=self._parse_time(row.uhrzeit_bis, "uhrzeit_bis"),
-                    unterbrechung_beginn=self._parse_optional_time(row.unterbrechung_beginn),
-                    unterbrechung_ende=self._parse_optional_time(row.unterbrechung_ende),
+                    pause_beginn=self._parse_optional_time(row.pause_beginn),
+                    pause_ende=self._parse_optional_time(row.pause_ende),
+                    pause2_beginn=self._parse_optional_time(row.pause2_beginn),
+                    pause2_ende=self._parse_optional_time(row.pause2_ende),
                     anmerkung=row.anmerkung or None,
                 )
                 gespeicherter_eintrag = self._anwendung.erfasse(eintrag)
@@ -201,9 +203,13 @@ class ZeiteintragViewModel(QObject):
             datum=eintrag.datum.strftime("%d.%m.%Y"),
             uhrzeit_von=eintrag.uhrzeit_von.strftime("%H:%M"),
             uhrzeit_bis=eintrag.uhrzeit_bis.strftime("%H:%M"),
-            unterbrechung_beginn=eintrag.unterbrechung_beginn.strftime("%H:%M")
-            if eintrag.unterbrechung_beginn
+            pause_beginn=eintrag.pause_beginn.strftime("%H:%M")
+            if eintrag.pause_beginn
             else "",
-            unterbrechung_ende=eintrag.unterbrechung_ende.strftime("%H:%M") if eintrag.unterbrechung_ende else "",
+            pause_ende=eintrag.pause_ende.strftime("%H:%M") if eintrag.pause_ende else "",
+            pause2_beginn=eintrag.pause2_beginn.strftime("%H:%M")
+            if eintrag.pause2_beginn
+            else "",
+            pause2_ende=eintrag.pause2_ende.strftime("%H:%M") if eintrag.pause2_ende else "",
             anmerkung=eintrag.anmerkung or "",
         )
