@@ -17,7 +17,7 @@ DEFAULT_ZEITEINTRAG_EXCEL_CELL_SPEC: tuple[int | None, ...] = (
     7,
     None,
     None,
-    10,
+    11,
 )
 
 

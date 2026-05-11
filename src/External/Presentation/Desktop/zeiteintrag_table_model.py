@@ -73,8 +73,8 @@ class ZeiteintragTableModel(QAbstractTableModel):
         "Bis",
         "Geleistet",
         "Soll",
-        "Kommentar",
         "Soll nach Vertrag",
+        "Kommentar",
     ]
     HEADER_TOOLTIPS = [
         "Wird automatisch aus dem Datum ermittelt",
@@ -87,8 +87,8 @@ class ZeiteintragTableModel(QAbstractTableModel):
         "Optionales Format: HH:MM, z. B. 14:15",
         "Geleistete Zeit (Bis - Von - beide Pausen), Format HH:MM",
         "Soll aus Stundenplan (Wochentag + Von), Format HH:MM",
-        "Freitext (max. 80 Zeichen)",
         "Soll gemaess Wochenstunden aus Vertrag (Wochentag), Format HH:MM",
+        "Freitext (max. 80 Zeichen)",
     ]
 
     def __init__(self) -> None:
@@ -195,9 +195,9 @@ class ZeiteintragTableModel(QAbstractTableModel):
             case 9:
                 return self._soll_aus_stundenplan(row)
             case 10:
-                return row.anmerkung
-            case 11:
                 return self._soll_nach_vertrag(row)
+            case 11:
+                return row.anmerkung
             case _:
                 return None
 
@@ -207,7 +207,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
 
         row = self._rows[index.row()]
         text = str(value)
-        if index.column() != 10:
+        if index.column() != 11:
             text = text.strip()
         if index.column() == 0:
             return False
@@ -226,9 +226,9 @@ class ZeiteintragTableModel(QAbstractTableModel):
             row.pause2_beginn = text
         elif index.column() == 7:
             row.pause2_ende = text
-        elif index.column() in (8, 9):
+        elif index.column() in (8, 9, 10):
             return False
-        elif index.column() == 10:
+        elif index.column() == 11:
             row.anmerkung = text
         else:
             return False
@@ -266,7 +266,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
         if not index.isValid():
             return Qt.ItemIsEnabled
-        if index.column() in (0, 8, 9, 11):
+        if index.column() in (0, 8, 9, 10):
             return Qt.ItemIsSelectable | Qt.ItemIsEnabled
         return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
 
@@ -278,7 +278,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
         self.endInsertRows()
         zeile = self._rows[position]
         if self._trage_feiertagsname_in_leeres_kommentar_ein(zeile):
-            idx = self.index(position, 10)
+            idx = self.index(position, 11)
             self.dataChanged.emit(
                 idx,
                 idx,
@@ -302,7 +302,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
         for zeilen_index, row in enumerate(self._rows):
             if not self._trage_feiertagsname_in_leeres_kommentar_ein(row):
                 continue
-            idx = self.index(zeilen_index, 10)
+            idx = self.index(zeilen_index, 11)
             self.dataChanged.emit(
                 idx,
                 idx,

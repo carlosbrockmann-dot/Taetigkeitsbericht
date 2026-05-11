@@ -72,7 +72,7 @@ class LiveCommitDelegate(QStyledItemDelegate):
     def setModelData(self, editor, model, index):  # noqa: N802
         if isinstance(editor, QLineEdit):
             text = editor.text()
-            if index.column() != 10:
+            if index.column() != 11:
                 text = text.strip()
             is_live_commit = bool(editor.property("_live_commit"))
             if not is_live_commit and index.column() in (2, 3, 4, 5, 6, 7) and text.isdigit():
@@ -296,8 +296,8 @@ class ZeiteintragWindow(QMainWindow):
         horizontal_header.resizeSection(7, 60)
         horizontal_header.resizeSection(8, 80)
         horizontal_header.resizeSection(9, 72)
-        horizontal_header.resizeSection(10, 220)
-        horizontal_header.resizeSection(11, 110)
+        horizontal_header.resizeSection(10, 110)
+        horizontal_header.resizeSection(11, 220)
         self._table.verticalHeader().setVisible(True)
 
         root_layout.addLayout(toolbar_layout)
@@ -617,7 +617,7 @@ class ZeiteintragWindow(QMainWindow):
             "pause_ende": 5,
             "pause2_beginn": 6,
             "pause2_ende": 7,
-            "anmerkung": 10,
+            "anmerkung": 11,
         }
         for feldname, spalte in feld_zu_spalte.items():
             zielwert = getattr(row, feldname).strip()
