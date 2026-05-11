@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from PySide6.QtCore import QPersistentModelIndex, QRect, QSize, Qt
 from PySide6.QtGui import QGuiApplication, QKeySequence, QPalette, QShortcut
 from PySide6.QtWidgets import (
@@ -164,9 +166,15 @@ class GruppenHeaderView(QHeaderView):
 
 
 class StundenplanView(QWidget):
-    def __init__(self, view_model: StundenplanViewModel, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        view_model: StundenplanViewModel,
+        parent: QWidget | None = None,
+        ausgeblendete_spalten: Sequence[int] | None = None,
+    ) -> None:
         super().__init__(parent)
         self._view_model = view_model
+        self._ausgeblendete_spalten = tuple(ausgeblendete_spalten or ())
         self._has_unsaved_changes = False
         self._suspend_dirty_tracking = False
         self._baseline_rows: list[tuple[object, int, str, str, str, str, str, str, str]] = []
@@ -223,6 +231,8 @@ class StundenplanView(QWidget):
         horizontal_header.resizeSection(5, 60)
         horizontal_header.resizeSection(6, 60)
         horizontal_header.resizeSection(7, 80)
+        for spalte in self._ausgeblendete_spalten:
+            self._table.setColumnHidden(spalte, True)
         self._table.verticalHeader().setVisible(True)
 
         root_layout.addLayout(toolbar_layout)

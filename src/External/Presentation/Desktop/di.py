@@ -64,9 +64,14 @@ class DesktopPresentationDIModule(Module):
 
     @provider
     def provide_stundenplan_view(
-        self, view_model: StundenplanViewModel
+        self,
+        view_model: StundenplanViewModel,
+        app_config: AppConfig,
     ) -> StundenplanView:
-        return StundenplanView(view_model)
+        return StundenplanView(
+            view_model,
+            ausgeblendete_spalten=app_config.stundenplan_ausgeblendete_spalten,
+        )
 
     @provider
     def provide_feiertag_view(

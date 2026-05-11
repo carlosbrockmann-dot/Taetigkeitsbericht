@@ -78,26 +78,29 @@ def _parse_cell_spec(raw: Any) -> tuple[int | None, ...]:
 
 
 ZEITEINTRAG_SPALTEN_MAX: Final[int] = 12
+STUNDENPLAN_SPALTEN_MAX: Final[int] = 8
 
 
-def _parse_ausgeblendete_spalten(raw: Any) -> tuple[int, ...]:
+def _parse_ausgeblendete_spalten(
+    raw: Any, max_index: int, pfad_in_config: str
+) -> tuple[int, ...]:
     if raw is None:
         return ()
     if not isinstance(raw, list):
-        raise TypeError("zeiteintrag_tabelle.ausgeblendete_spalten muss eine Liste sein.")
+        raise TypeError(f"{pfad_in_config} muss eine Liste sein.")
     out: set[int] = set()
     for idx, x in enumerate(raw):
         if isinstance(x, bool):
             raise ValueError(
-                f"ausgeblendete_spalten[{idx}]: boolesche Werte sind nicht erlaubt."
+                f"{pfad_in_config}[{idx}]: boolesche Werte sind nicht erlaubt."
             )
         if not isinstance(x, int):
             raise ValueError(
-                f"ausgeblendete_spalten[{idx}]: erwartet int (Spaltenindex 0–{ZEITEINTRAG_SPALTEN_MAX})."
+                f"{pfad_in_config}[{idx}]: erwartet int (Spaltenindex 0–{max_index})."
             )
-        if not 0 <= x <= ZEITEINTRAG_SPALTEN_MAX:
+        if not 0 <= x <= max_index:
             raise ValueError(
-                f"ausgeblendete_spalten[{idx}]: Spalte {x} ungueltig (0–{ZEITEINTRAG_SPALTEN_MAX})."
+                f"{pfad_in_config}[{idx}]: Spalte {x} ungueltig (0–{max_index})."
             )
         out.add(x)
     return tuple(sorted(out))
@@ -123,6 +126,7 @@ class AppConfig:
     version: str = "0.0.0"
     soll_nach_vertrag_nach_wochentag: dict[int, str] = field(default_factory=dict)
     zeiteintrag_ausgeblendete_spalten: tuple[int, ...] = ()
+    stundenplan_ausgeblendete_spalten: tuple[int, ...] = ()
     zeiteintrag_excel_export: ZeiteintragExcelExportSettings = field(
         default_factory=ZeiteintragExcelExportSettings
     )
@@ -148,7 +152,24 @@ def _section_zeiteintrag_tabelle(data: dict[str, Any]) -> tuple[int, ...]:
         return ()
     if not isinstance(sec, dict):
         raise TypeError("[zeiteintrag_tabelle] muss eine Tabelle sein.")
-    return _parse_ausgeblendete_spalten(sec.get("ausgeblendete_spalten"))
+    return _parse_ausgeblendete_spalten(
+        sec.get("ausgeblendete_spalten"),
+        ZEITEINTRAG_SPALTEN_MAX,
+        "zeiteintrag_tabelle.ausgeblendete_spalten",
+    )
+
+
+def _section_stundenplan_tabelle(data: dict[str, Any]) -> tuple[int, ...]:
+    sec = data.get("stundenplan_tabelle")
+    if sec is None:
+        return ()
+    if not isinstance(sec, dict):
+        raise TypeError("[stundenplan_tabelle] muss eine Tabelle sein.")
+    return _parse_ausgeblendete_spalten(
+        sec.get("ausgeblendete_spalten"),
+        STUNDENPLAN_SPALTEN_MAX,
+        "stundenplan_tabelle.ausgeblendete_spalten",
+    )
 
 
 def _section_soll_nach_vertrag(data: dict[str, Any]) -> dict[int, str]:
@@ -186,5 +207,6 @@ def load_app_config(config_path: Path | None = None) -> AppConfig:
         version=str(data.get("version", "0.0.0")),
         soll_nach_vertrag_nach_wochentag=_section_soll_nach_vertrag(data),
         zeiteintrag_ausgeblendete_spalten=_section_zeiteintrag_tabelle(data),
+        stundenplan_ausgeblendete_spalten=_section_stundenplan_tabelle(data),
         zeiteintrag_excel_export=_section_zeiteintrag_excel_export(data),
     )
