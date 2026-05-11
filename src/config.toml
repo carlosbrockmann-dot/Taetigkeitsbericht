@@ -11,15 +11,30 @@ path = "myapp.db"
 
 [sollstunden]
 wochenstunden = [
-    { wochentag = 1, stunden = 4, name = "Montag" },
-    { wochentag = 2, stunden = 4, name = "Dienstag" },
-    { wochentag = 3, stunden = 4, name = "Mittwoch" },
-    { wochentag = 4, stunden = 4, name = "Donnerstag" },
-    { wochentag = 5, stunden = 0, name = "Freitag" },
-    { wochentag = 6, stunden = 0, name = "Samstag" },
-    { wochentag = 7, stunden = 0, name = "Sonntag" },
+    { wochentag = 1, stunden = "4:00", name = "Montag" },
+    { wochentag = 2, stunden = "4:00", name = "Dienstag" },
+    { wochentag = 3, stunden = "4:00", name = "Mittwoch" },
+    { wochentag = 4, stunden = "4:00", name = "Donnerstag" },
+    { wochentag = 5, stunden = "0:00", name = "Freitag" },
+    { wochentag = 6, stunden = "0:00", name = "Samstag" },
+    { wochentag = 7, stunden = "0:00", name = "Sonntag" },
 ]
 wochenstunden_regel = 40
 wochenstunden_max = 48
 wochenstunden_summe = 16
+
+# Zeiteintrag: Button „Fuer Excel kopieren“ (tab-getrennte Zwischenablage).
+#
+# cell_spec — Ausgabereihenfolge:
+#   - Ganze Zahl 0…11 = Quellspalte im Tabellenmodell (0 Tag, 1 Datum, 2–3 Von/Bis,
+#     4–7 Pausen Von/Bis, 8 Geleistet, 9 Soll, 10 Kommentar, 11 Soll nach Vertrag).
+#   - "blank" = leere Zelle (z. B. Platzhalter statt Geleistet/Soll).
+# include_header — true: erste Zeile mit den gleichen Spaltennamen wie im Modell.
+# leading_empty_columns / trailing_empty_columns — zusaetzliche leere Spalten am Rand jeder Zeile.
+#
+[zeiteintrag_excel_export]
+include_header = false
+leading_empty_columns = 0
+trailing_empty_columns = 0
+cell_spec = [ 0, 1, 2, 3, 4, 5, 6, 7, "blank", "blank", 10 ]
 

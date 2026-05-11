@@ -10,6 +10,7 @@ SRC_ROOT = Path(__file__).resolve().parents[1]
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
+from App.app_config import AppConfig, load_app_config
 from Core.Application.di import ApplicationDIModule
 from Core.Application.feiertag_anwendung import FeiertagAnwendung
 from Core.Application.stundenplan_anwendung import StundenplanAnwendung
@@ -18,7 +19,12 @@ from External.Infrastructure.di import InfrastructureConfig, InfrastructureDIMod
 from External.Presentation.Desktop.di import DesktopPresentationDIModule
 
 
-def create_injector(database_url: str = "sqlite:///taetigkeitsbericht.db") -> Injector:
+def create_injector(
+    database_url: str = "sqlite:///taetigkeitsbericht.db",
+    app_config: AppConfig | None = None,
+) -> Injector:
+    if app_config is None:
+        app_config = load_app_config()
     config = InfrastructureConfig(database_url=database_url)
     return Injector(
         [
@@ -26,6 +32,7 @@ def create_injector(database_url: str = "sqlite:///taetigkeitsbericht.db") -> In
             ApplicationDIModule(),
             DesktopPresentationDIModule(),
             lambda binder: binder.bind(InfrastructureConfig, to=config),
+            lambda binder: binder.bind(AppConfig, to=app_config),
         ]
     )
 

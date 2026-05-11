@@ -1,0 +1,152 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+import tomllib
+
+DEFAULT_ZEITEINTRAG_EXCEL_CELL_SPEC: tuple[int | None, ...] = (
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    None,
+    None,
+    10,
+)
+
+
+def _stunden_zu_hh_mm(wert: Any) -> str:
+    if isinstance(wert, bool):
+        raise ValueError("stunden darf kein bool sein.")
+    if isinstance(wert, int):
+        minuten = wert * 60
+    elif isinstance(wert, float):
+        minuten = int(round(wert * 60))
+    elif isinstance(wert, str):
+        text = wert.strip()
+        if ":" in text:
+            teile = text.split(":", 1)
+            if len(teile) != 2:
+                raise ValueError(f"Ungueltiges Zeitformat: {wert!r}")
+            h = int(teile[0])
+            m = int(teile[1])
+            if h < 0 or not 0 <= m < 60:
+                raise ValueError(f"Ungueltige Zeit: {wert!r}")
+            minuten = h * 60 + m
+        elif text:
+            minuten = int(round(float(text) * 60))
+        else:
+            minuten = 0
+    else:
+        raise ValueError(f"stunden ungueltig: {wert!r}")
+    if minuten < 0:
+        raise ValueError("stunden darf nicht negativ sein.")
+    h, m = divmod(minuten, 60)
+    return f"{h:02d}:{m:02d}"
+
+
+def _parse_cell_spec(raw: Any) -> tuple[int | None, ...]:
+    if raw is None:
+        return DEFAULT_ZEITEINTRAG_EXCEL_CELL_SPEC
+    if not isinstance(raw, list):
+        raise TypeError("zeiteintrag_excel_export.cell_spec muss eine Liste sein.")
+    out: list[int | None] = []
+    for x in raw:
+        if x in ("blank", "empty", "none", None):
+            out.append(None)
+            continue
+        if isinstance(x, bool):
+            raise ValueError("cell_spec: boolesche Werte sind nicht erlaubt.")
+        if isinstance(x, int):
+            if not 0 <= x <= 11:
+                raise ValueError(
+                    f"cell_spec: Spaltenindex {x} ungueltig (Zeiteintrag-Tabelle: 0–11)."
+                )
+            out.append(x)
+            continue
+        raise ValueError(f"cell_spec: unbekannter Eintrag {x!r} (int oder 'blank').")
+    if not out:
+        raise ValueError("cell_spec darf nicht leer sein.")
+    return tuple(out)
+
+
+@dataclass(frozen=True)
+class ZeiteintragExcelExportSettings:
+    """Einstellungen fuer „Fuer Excel kopieren“ (TSV in Zwischenablage)."""
+
+    include_header: bool = False
+    leading_empty_columns: int = 0
+    trailing_empty_columns: int = 0
+    cell_spec: tuple[int | None, ...] = DEFAULT_ZEITEINTRAG_EXCEL_CELL_SPEC
+
+    def __post_init__(self) -> None:
+        if self.leading_empty_columns < 0 or self.trailing_empty_columns < 0:
+            raise ValueError("leading/trailing_empty_columns duerfen nicht negativ sein.")
+
+
+@dataclass(frozen=True)
+class AppConfig:
+    name: str = "Taetigkeitsbericht"
+    version: str = "0.0.0"
+    soll_nach_vertrag_nach_wochentag: dict[int, str] = field(default_factory=dict)
+    zeiteintrag_excel_export: ZeiteintragExcelExportSettings = field(
+        default_factory=ZeiteintragExcelExportSettings
+    )
+
+
+def _section_zeiteintrag_excel_export(data: dict[str, Any]) -> ZeiteintragExcelExportSettings:
+    sec = data.get("zeiteintrag_excel_export")
+    if sec is None:
+        return ZeiteintragExcelExportSettings()
+    if not isinstance(sec, dict):
+        raise TypeError("[zeiteintrag_excel_export] muss eine Tabelle sein.")
+    return ZeiteintragExcelExportSettings(
+        include_header=bool(sec.get("include_header", False)),
+        leading_empty_columns=int(sec.get("leading_empty_columns", 0)),
+        trailing_empty_columns=int(sec.get("trailing_empty_columns", 0)),
+        cell_spec=_parse_cell_spec(sec.get("cell_spec")),
+    )
+
+
+def _section_soll_nach_vertrag(data: dict[str, Any]) -> dict[int, str]:
+    sec = data.get("sollstunden")
+    if not isinstance(sec, dict):
+        return {}
+    wochenstunden = sec.get("wochenstunden")
+    if not isinstance(wochenstunden, list):
+        return {}
+    out: dict[int, str] = {}
+    for idx, eintrag in enumerate(wochenstunden, start=1):
+        if not isinstance(eintrag, dict):
+            raise TypeError(f"sollstunden.wochenstunden[{idx}] muss eine Tabelle sein.")
+        if "wochentag" not in eintrag or "stunden" not in eintrag:
+            continue
+        wt = int(eintrag["wochentag"])
+        if not 1 <= wt <= 7:
+            raise ValueError(f"wochentag {wt} ungueltig (erwartet 1..7).")
+        out[wt] = _stunden_zu_hh_mm(eintrag["stunden"])
+    return out
+
+
+def load_app_config(config_path: Path | None = None) -> AppConfig:
+    """Laedt src/config.toml (oder den angegebenen Pfad)."""
+    if config_path is None:
+        config_path = Path(__file__).resolve().parents[1] / "config.toml"
+    if not config_path.is_file():
+        return AppConfig()
+    with config_path.open("rb") as f:
+        data = tomllib.load(f)
+    if not isinstance(data, dict):
+        return AppConfig()
+    return AppConfig(
+        name=str(data.get("name", "Taetigkeitsbericht")),
+        version=str(data.get("version", "0.0.0")),
+        soll_nach_vertrag_nach_wochentag=_section_soll_nach_vertrag(data),
+        zeiteintrag_excel_export=_section_zeiteintrag_excel_export(data),
+    )

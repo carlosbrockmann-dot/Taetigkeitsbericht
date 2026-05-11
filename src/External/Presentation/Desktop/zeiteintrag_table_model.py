@@ -65,13 +65,14 @@ class ZeiteintragTableModel(QAbstractTableModel):
         "Datum",
         "Von",
         "Bis",
-        "Pause 1 Von",
-        "Pause 1 Bis",
-        "Pause 2 Von",
-        "Pause 2 Bis",
+        "Von",
+        "Bis",
+        "Von",
+        "Bis",
         "Geleistet",
         "Soll",
         "Kommentar",
+        "Soll nach Vertrag",
     ]
     HEADER_TOOLTIPS = [
         "Wird automatisch aus dem Datum ermittelt",
@@ -85,6 +86,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
         "Geleistete Zeit (Bis - Von - beide Pausen), Format HH:MM",
         "Soll aus Stundenplan (Wochentag + Von), Format HH:MM",
         "Freitext (max. 80 Zeichen)",
+        "Soll gemaess Wochenstunden aus Vertrag (Wochentag), Format HH:MM",
     ]
 
     def __init__(self) -> None:
@@ -93,6 +95,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
         self._dirty_rows: set[int] = set()
         self._feiertag_nach_datum: dict[date, Feiertag] = {}
         self._stundenplan_registry: StundenplanRegistry | None = None
+        self._vertrag_stunden_nach_wochentag: dict[int, str] = {}
 
     @property
     def rows(self) -> list[ZeiteintragRow]:
@@ -191,6 +194,8 @@ class ZeiteintragTableModel(QAbstractTableModel):
                 return self._soll_aus_stundenplan(row)
             case 10:
                 return row.anmerkung
+            case 11:
+                return self._soll_nach_vertrag(row)
             case _:
                 return None
 
@@ -258,7 +263,7 @@ class ZeiteintragTableModel(QAbstractTableModel):
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
         if not index.isValid():
             return Qt.ItemIsEnabled
-        if index.column() in (0, 8, 9):
+        if index.column() in (0, 8, 9, 11):
             return Qt.ItemIsSelectable | Qt.ItemIsEnabled
         return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
 
@@ -283,6 +288,9 @@ class ZeiteintragTableModel(QAbstractTableModel):
 
     def set_stundenplan_registry(self, registry: StundenplanRegistry | None) -> None:
         self._stundenplan_registry = registry
+
+    def set_vertrag_stunden_nach_wochentag(self, mapping: dict[int, str]) -> None:
+        self._vertrag_stunden_nach_wochentag = dict(mapping)
 
     def stundenplan_soll_aktualisieren(self) -> None:
         if not self._rows:
@@ -406,6 +414,16 @@ class ZeiteintragTableModel(QAbstractTableModel):
         if row.uhrzeit_von.strip():
             return self._stundenplan_registry.soll_fuer(wochentag, row.uhrzeit_von)
         return self._stundenplan_registry.gesamt_soll_fuer_wochentag(wochentag)
+
+    def _soll_nach_vertrag(self, row: ZeiteintragRow) -> str:
+        datum_text = row.datum.strip()
+        if not datum_text:
+            return ""
+        try:
+            d = datetime.strptime(datum_text, "%d.%m.%Y").date()
+        except ValueError:
+            return ""
+        return self._vertrag_stunden_nach_wochentag.get(d.isoweekday(), "")
 
     def _feiertag_fuer_datumtext(self, datum_text: str) -> Feiertag | None:
         text = datum_text.strip()

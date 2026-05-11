@@ -27,6 +27,7 @@ class ZeiteintragViewModel(QObject):
         feiertag_registry: FeiertagRegistry,
         stundenplan_anwendung: StundenplanAnwendung,
         stundenplan_registry: StundenplanRegistry,
+        soll_nach_vertrag_nach_wochentag: dict[int, str] | None = None,
     ) -> None:
         super().__init__()
         self._anwendung = anwendung
@@ -36,6 +37,9 @@ class ZeiteintragViewModel(QObject):
         self._stundenplan_registry = stundenplan_registry
         self._table_model = ZeiteintragTableModel()
         self._table_model.set_stundenplan_registry(stundenplan_registry)
+        self._table_model.set_vertrag_stunden_nach_wochentag(
+            soll_nach_vertrag_nach_wochentag or {}
+        )
         self._zu_loeschende_ids: list[UUID] = []
         self._geladenes_jahr: int | None = None
         self._geladenes_monat: int | None = None

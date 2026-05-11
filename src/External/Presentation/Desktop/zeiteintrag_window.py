@@ -3,11 +3,12 @@ from __future__ import annotations
 from datetime import date, datetime
 from uuid import UUID
 
-from PySide6.QtCore import QPersistentModelIndex, QRect, Qt
+from PySide6.QtCore import QModelIndex, QPersistentModelIndex, QRect, QSize, Qt
 from PySide6.QtGui import QCloseEvent, QColor, QGuiApplication, QIcon, QKeySequence, QPalette, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
+    QHeaderView,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -17,6 +18,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QStyle,
     QStyledItemDelegate,
+    QStyleOptionHeader,
     QStyleOptionViewItem,
     QTableView,
     QTabWidget,
@@ -24,6 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from App.app_config import ZeiteintragExcelExportSettings
 from External.Presentation.Desktop.feiertag_view import FeiertagView
 from External.Presentation.Desktop.stundenplan_view import StundenplanView
 from External.Presentation.Desktop.zeiteintrag_table_model import ZeiteintragTableModel
@@ -146,17 +149,79 @@ class WochentagMitSternDelegate(LiveCommitDelegate):
         painter.restore()
 
 
+class GruppenHeaderView(QHeaderView):
+    def __init__(self, orientation: Qt.Orientation, parent=None) -> None:
+        super().__init__(orientation, parent)
+        self._gruppen = [
+            ("Arbeitsphase", 2, 3),
+            ("Pause", 4, 5),
+            ("Pause 2", 6, 7),
+        ]
+        self.setDefaultAlignment(Qt.AlignCenter)
+
+    def sectionSizeFromContents(self, logical_index: int) -> QSize:  # noqa: N802
+        groesse = super().sectionSizeFromContents(logical_index)
+        groesse.setHeight(max(groesse.height() * 2, 44))
+        return groesse
+
+    def paintSection(self, painter, rect: QRect, logical_index: int) -> None:  # noqa: N802
+        if not rect.isValid():
+            return
+        model = self.model()
+        if model is None:
+            super().paintSection(painter, rect, logical_index)
+            return
+
+        top_hoehe = rect.height() // 2
+        top_rect = QRect(rect.left(), rect.top(), rect.width(), top_hoehe)
+        bottom_rect = QRect(rect.left(), rect.top() + top_hoehe, rect.width(), rect.height() - top_hoehe)
+
+        bottom_option = QStyleOptionHeader()
+        self.initStyleOption(bottom_option)
+        bottom_option.rect = bottom_rect
+        bottom_option.section = logical_index
+        bottom_option.text = str(model.headerData(logical_index, Qt.Horizontal, Qt.DisplayRole) or "")
+        self.style().drawControl(QStyle.ControlElement.CE_Header, bottom_option, painter, self)
+
+        gruppe = next((g for g in self._gruppen if g[1] <= logical_index <= g[2]), None)
+        if gruppe is None:
+            top_option = QStyleOptionHeader()
+            self.initStyleOption(top_option)
+            top_option.rect = top_rect
+            top_option.section = logical_index
+            top_option.text = ""
+            self.style().drawControl(QStyle.ControlElement.CE_Header, top_option, painter, self)
+            return
+
+        label, start, ende = gruppe
+        if logical_index != start:
+            return
+
+        span_links = self.sectionViewportPosition(start)
+        span_breite = sum(self.sectionSize(col) for col in range(start, ende + 1))
+        gruppen_rect = QRect(span_links, rect.top(), span_breite, top_hoehe)
+
+        top_option = QStyleOptionHeader()
+        self.initStyleOption(top_option)
+        top_option.rect = gruppen_rect
+        top_option.section = logical_index
+        top_option.text = label
+        self.style().drawControl(QStyle.ControlElement.CE_Header, top_option, painter, self)
+
+
 class ZeiteintragWindow(QMainWindow):
     def __init__(
         self,
         view_model: ZeiteintragViewModel,
         stundenplan_view: StundenplanView,
         feiertag_view: FeiertagView,
+        excel_export: ZeiteintragExcelExportSettings | None = None,
     ) -> None:
         super().__init__()
         self._view_model = view_model
         self._stundenplan_view = stundenplan_view
         self._feiertag_view = feiertag_view
+        self._excel_export = excel_export or ZeiteintragExcelExportSettings()
         self._has_unsaved_changes = False
         self._current_loaded_year: int | None = None
         self._current_loaded_month: int | None = None
@@ -184,6 +249,11 @@ class ZeiteintragWindow(QMainWindow):
         self._monat_combo.setCurrentIndex(date.today().month - 1)
 
         self._laden_button = QPushButton("Laden", self)
+        self._excel_kopieren_button = QPushButton("Fuer Excel kopieren", self)
+        self._excel_kopieren_button.setToolTip(
+            "Alle Datenzeilen als TSV in die Zwischenablage. "
+            "Ablauf und Kopfzeile: siehe [zeiteintrag_excel_export] in config.toml."
+        )
         self._zeile_hinzufuegen_button = QPushButton("Zeile hinzufuegen", self)
         self._zeile_loeschen_button = QPushButton("Markierte Zeile(n) loeschen", self)
         self._speichern_button = QPushButton("Alle Zeilen speichern", self)
@@ -193,6 +263,7 @@ class ZeiteintragWindow(QMainWindow):
         toolbar_layout.addWidget(self._jahr_spin)
         toolbar_layout.addWidget(self._monat_combo)
         toolbar_layout.addWidget(self._laden_button)
+        toolbar_layout.addWidget(self._excel_kopieren_button)
         toolbar_layout.addStretch()
         toolbar_layout.addWidget(self._zeile_hinzufuegen_button)
         toolbar_layout.addWidget(self._zeile_loeschen_button)
@@ -200,6 +271,7 @@ class ZeiteintragWindow(QMainWindow):
 
         self._table = QTableView(self)
         self._table.setModel(self._view_model.table_model)
+        self._table.setHorizontalHeader(GruppenHeaderView(Qt.Horizontal, self._table))
         self._table.setItemDelegate(LiveCommitDelegate(self._table))
         self._table.setItemDelegateForColumn(0, WochentagMitSternDelegate(self._table))
         self._table.setAlternatingRowColors(True)
@@ -214,12 +286,14 @@ class ZeiteintragWindow(QMainWindow):
         horizontal_header = self._table.horizontalHeader()
         horizontal_header.setStretchLastSection(True)
         horizontal_header.resizeSection(0, 50)
-        horizontal_header.resizeSection(4, 62)
-        horizontal_header.resizeSection(5, 62)
-        horizontal_header.resizeSection(6, 62)
-        horizontal_header.resizeSection(7, 62)
+        horizontal_header.resizeSection(4, 60)
+        horizontal_header.resizeSection(5, 60)
+        horizontal_header.resizeSection(6, 60)
+        horizontal_header.resizeSection(7, 60)
         horizontal_header.resizeSection(8, 80)
         horizontal_header.resizeSection(9, 72)
+        horizontal_header.resizeSection(10, 220)
+        horizontal_header.resizeSection(11, 110)
         self._table.verticalHeader().setVisible(True)
 
         root_layout.addLayout(toolbar_layout)
@@ -236,6 +310,7 @@ class ZeiteintragWindow(QMainWindow):
         self.setCentralWidget(self._tab_widget)
 
         self._laden_button.clicked.connect(self._on_laden)
+        self._excel_kopieren_button.clicked.connect(self._kopiere_tabelle_fuer_excel)
         self._zeile_hinzufuegen_button.clicked.connect(self._on_zeile_hinzufuegen)
         self._zeile_loeschen_button.clicked.connect(self._on_zeile_loeschen)
         self._speichern_button.clicked.connect(self._on_speichern)
@@ -411,6 +486,46 @@ class ZeiteintragWindow(QMainWindow):
 
     def _on_selection_changed(self, *_args) -> None:
         self._kopiere_markierte_zellen_in_zwischenablage(silent=True)
+
+    def _tsv_zeile_fuer_excel_export(
+        self,
+        model: ZeiteintragTableModel,
+        zeile: int | None,
+        parent: QModelIndex,
+    ) -> str:
+        """zeile=None baut die Kopfzeile (Spaltennamen aus dem Modell)."""
+        cfg = self._excel_export
+        teile: list[str] = [""] * cfg.leading_empty_columns
+        for spec in cfg.cell_spec:
+            if spec is None:
+                teile.append("")
+            elif zeile is None:
+                teile.append(ZeiteintragTableModel.HEADERS[spec])
+            else:
+                wert = model.data(model.index(zeile, spec, parent), Qt.DisplayRole)
+                teile.append("" if wert is None else str(wert))
+        teile.extend([""] * cfg.trailing_empty_columns)
+        return "\t".join(teile)
+
+    def _kopiere_tabelle_fuer_excel(self) -> None:
+        """TSV gemaess config.toml [zeiteintrag_excel_export]."""
+        model = self._view_model.table_model
+        parent = QModelIndex()
+        zeilen: list[str] = []
+        if self._excel_export.include_header:
+            zeilen.append(self._tsv_zeile_fuer_excel_export(model, None, parent))
+        n = model.rowCount(parent)
+        for r in range(n):
+            zeilen.append(self._tsv_zeile_fuer_excel_export(model, r, parent))
+        text = "\n".join(zeilen)
+        clipboard = QGuiApplication.clipboard()
+        if clipboard is None:
+            return
+        clipboard.setText(text)
+        kopf_hinweis = " mit Kopfzeile" if self._excel_export.include_header else ""
+        self._status_label.setText(
+            f"{n} Datenzeile(n){kopf_hinweis} fuer Excel in die Zwischenablage kopiert."
+        )
 
     def _kopiere_markierte_zellen_in_zwischenablage(self, silent: bool = False) -> None:
         selection_model = self._table.selectionModel()

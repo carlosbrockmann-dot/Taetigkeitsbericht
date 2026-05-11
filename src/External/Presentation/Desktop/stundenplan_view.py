@@ -1,15 +1,18 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QPersistentModelIndex, Qt
+from PySide6.QtCore import QPersistentModelIndex, QRect, QSize, Qt
 from PySide6.QtGui import QGuiApplication, QKeySequence, QPalette, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
+    QHeaderView,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QStyle,
+    QStyleOptionHeader,
     QStyledItemDelegate,
     QTableView,
     QVBoxLayout,
@@ -100,6 +103,66 @@ class WochentagDelegate(StundenplanLiveCommitDelegate):
         super().setModelData(editor, model, index)
 
 
+class GruppenHeaderView(QHeaderView):
+    def __init__(self, orientation: Qt.Orientation, parent=None) -> None:
+        super().__init__(orientation, parent)
+        self._gruppen = [
+            ("Arbeitsphase", 1, 2),
+            ("Pause", 3, 4),
+            ("Pause 2", 5, 6),
+        ]
+        self.setDefaultAlignment(Qt.AlignCenter)
+
+    def sectionSizeFromContents(self, logical_index: int) -> QSize:  # noqa: N802
+        groesse = super().sectionSizeFromContents(logical_index)
+        groesse.setHeight(max(groesse.height() * 2, 44))
+        return groesse
+
+    def paintSection(self, painter, rect: QRect, logical_index: int) -> None:  # noqa: N802
+        if not rect.isValid():
+            return
+        model = self.model()
+        if model is None:
+            super().paintSection(painter, rect, logical_index)
+            return
+
+        top_hoehe = rect.height() // 2
+        top_rect = QRect(rect.left(), rect.top(), rect.width(), top_hoehe)
+        bottom_rect = QRect(rect.left(), rect.top() + top_hoehe, rect.width(), rect.height() - top_hoehe)
+
+        bottom_option = QStyleOptionHeader()
+        self.initStyleOption(bottom_option)
+        bottom_option.rect = bottom_rect
+        bottom_option.section = logical_index
+        bottom_option.text = str(model.headerData(logical_index, Qt.Horizontal, Qt.DisplayRole) or "")
+        self.style().drawControl(QStyle.ControlElement.CE_Header, bottom_option, painter, self)
+
+        gruppe = next((g for g in self._gruppen if g[1] <= logical_index <= g[2]), None)
+        if gruppe is None:
+            top_option = QStyleOptionHeader()
+            self.initStyleOption(top_option)
+            top_option.rect = top_rect
+            top_option.section = logical_index
+            top_option.text = ""
+            self.style().drawControl(QStyle.ControlElement.CE_Header, top_option, painter, self)
+            return
+
+        label, start, ende = gruppe
+        if logical_index != start:
+            return
+
+        span_links = self.sectionViewportPosition(start)
+        span_breite = sum(self.sectionSize(col) for col in range(start, ende + 1))
+        gruppen_rect = QRect(span_links, rect.top(), span_breite, top_hoehe)
+
+        top_option = QStyleOptionHeader()
+        self.initStyleOption(top_option)
+        top_option.rect = gruppen_rect
+        top_option.section = logical_index
+        top_option.text = label
+        self.style().drawControl(QStyle.ControlElement.CE_Header, top_option, painter, self)
+
+
 class StundenplanView(QWidget):
     def __init__(self, view_model: StundenplanViewModel, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -139,6 +202,7 @@ class StundenplanView(QWidget):
 
         self._table = QTableView(self)
         self._table.setModel(self._view_model.table_model)
+        self._table.setHorizontalHeader(GruppenHeaderView(Qt.Horizontal, self._table))
         live_delegate = StundenplanLiveCommitDelegate(self._table)
         self._table.setItemDelegate(live_delegate)
         self._table.setItemDelegateForColumn(0, WochentagDelegate(self._table))
@@ -154,10 +218,10 @@ class StundenplanView(QWidget):
         horizontal_header = self._table.horizontalHeader()
         horizontal_header.setStretchLastSection(True)
         horizontal_header.resizeSection(0, 70)
-        horizontal_header.resizeSection(3, 62)
-        horizontal_header.resizeSection(4, 62)
-        horizontal_header.resizeSection(5, 62)
-        horizontal_header.resizeSection(6, 62)
+        horizontal_header.resizeSection(3, 60)
+        horizontal_header.resizeSection(4, 60)
+        horizontal_header.resizeSection(5, 60)
+        horizontal_header.resizeSection(6, 60)
         horizontal_header.resizeSection(7, 80)
         self._table.verticalHeader().setVisible(True)
 

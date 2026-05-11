@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from injector import Module, provider, singleton
 
+from App.app_config import AppConfig
 from Core.Application.feiertag_anwendung import FeiertagAnwendung
 from Core.Application.stundenplan_anwendung import StundenplanAnwendung
 from Core.Application.zeiteintrag_anwendung import ZeiteintragAnwendung
@@ -34,6 +35,7 @@ class DesktopPresentationDIModule(Module):
         feiertag_registry: FeiertagRegistry,
         stundenplan_anwendung: StundenplanAnwendung,
         stundenplan_registry: StundenplanRegistry,
+        app_config: AppConfig,
     ) -> ZeiteintragViewModel:
         return ZeiteintragViewModel(
             anwendung,
@@ -41,6 +43,7 @@ class DesktopPresentationDIModule(Module):
             feiertag_registry,
             stundenplan_anwendung,
             stundenplan_registry,
+            app_config.soll_nach_vertrag_nach_wochentag,
         )
 
     @provider
@@ -77,5 +80,11 @@ class DesktopPresentationDIModule(Module):
         view_model: ZeiteintragViewModel,
         stundenplan_view: StundenplanView,
         feiertag_view: FeiertagView,
+        app_config: AppConfig,
     ) -> ZeiteintragWindow:
-        return ZeiteintragWindow(view_model, stundenplan_view, feiertag_view)
+        return ZeiteintragWindow(
+            view_model,
+            stundenplan_view,
+            feiertag_view,
+            excel_export=app_config.zeiteintrag_excel_export,
+        )
