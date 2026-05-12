@@ -27,6 +27,7 @@ from External.Presentation.Desktop.stundenplan_table_model import (
     StundenplanRow,
 )
 from External.Presentation.Desktop.stundenplan_view_model import StundenplanViewModel
+from External.Presentation.Desktop.table_view_styles import STANDARD_TABLE_VIEW_STYLESHEET
 
 
 class StundenplanLiveCommitDelegate(QStyledItemDelegate):
@@ -218,11 +219,7 @@ class StundenplanView(QWidget):
         self._table.setShowGrid(True)
         self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._table.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self._table.setStyleSheet(
-            "QTableView::item:selected {"
-            "background-color: #fff9c4;"
-            "}"
-        )
+        self._table.setStyleSheet(STANDARD_TABLE_VIEW_STYLESHEET)
         horizontal_header = self._table.horizontalHeader()
         horizontal_header.setStretchLastSection(True)
         horizontal_header.resizeSection(0, 70)

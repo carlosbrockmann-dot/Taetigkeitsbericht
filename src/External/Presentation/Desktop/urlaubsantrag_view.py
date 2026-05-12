@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from pydantic import ValidationError
 from PySide6.QtCore import QDate, QLocale, Qt
-from PySide6.QtGui import QFontMetrics, QKeySequence, QShortcut, QShowEvent
+from PySide6.QtGui import QKeySequence, QShortcut, QShowEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from External.Presentation.Desktop.table_view_styles import STANDARD_TABLE_VIEW_STYLESHEET
 from External.Presentation.Desktop.urlaubsantrag_table_model import UrlaubsantragRow
 from External.Presentation.Desktop.urlaubsantrag_view_model import UrlaubsantragViewModel
 
@@ -85,6 +86,8 @@ class UrlaubsantragView(QWidget):
         for de in (self._datum_von_input, self._datum_bis_input):
             de.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
             de.setFixedWidth(de.sizeHint().width())
+        self._datum_von_input.dateChanged.connect(self._on_datum_von_auswahl_geaendert)
+        self._datum_bis_input.dateChanged.connect(self._urlaubstage_aus_datum_vorbelegen)
 
         datum_zeile = QWidget(self._form_group)
         datum_layout = QHBoxLayout(datum_zeile)
@@ -111,10 +114,8 @@ class UrlaubsantragView(QWidget):
         self._urlaubstage_spin.setSizePolicy(
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
-        fm_stage = QFontMetrics(self._urlaubstage_spin.font())
-        self._urlaubstage_spin.setFixedWidth(
-            fm_stage.horizontalAdvance("366,0") + 36
-        )
+        self._urlaubstage_spin.setFixedWidth(100)
+        self._urlaubstage_aus_datum_vorbelegen()
 
         self._genehmigt_check = QCheckBox("Genehmigt", self._form_group)
 
@@ -135,16 +136,34 @@ class UrlaubsantragView(QWidget):
             QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed
         )
 
-        self._neuer_antrag_button = QPushButton("Neuer Antrag", self)
-        self._neuer_antrag_button.setToolTip(
+        self._reset_button = QPushButton("Reset", self)
+        self._reset_button.setToolTip(
             "Eingabe zuruecksetzen fuer einen neuen Urlaubsantrag."
         )
+        self._loeschen_button = QPushButton("Markierten Antrag loeschen", self)
+        self._loeschen_button.setToolTip(
+            "Loeschen der markierten Tabellenzeile (Taste Entf)."
+        )
+
+        _btn_breite_px = 200
+        for btn in (
+            self._laden_button,
+            self._speichern_button,
+            self._reset_button,
+            self._loeschen_button,
+        ):
+            btn.setFixedWidth(_btn_breite_px)
+
+        self._speichern_button.setStyleSheet("QPushButton { color: green; }")
+        self._reset_button.setStyleSheet("QPushButton { color: blue; }")
+        self._loeschen_button.setStyleSheet("QPushButton { color: red; }")
 
         aktions_spalte = QVBoxLayout()
         aktions_spalte.setSpacing(6)
         aktions_spalte.setContentsMargins(0, 0, 0, 0)
         aktions_spalte.addWidget(self._speichern_button)
-        aktions_spalte.addWidget(self._neuer_antrag_button)
+        aktions_spalte.addWidget(self._reset_button)
+        aktions_spalte.addWidget(self._loeschen_button)
 
         aktions_wrap = QWidget(self)
         aktions_wrap.setLayout(aktions_spalte)
@@ -169,19 +188,7 @@ class UrlaubsantragView(QWidget):
         self._table.setAlternatingRowColors(True)
         self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._table.setSelectionMode(QAbstractItemView.SingleSelection)
-        self._table.setStyleSheet(
-            "QTableView::item:selected {"
-            "background-color: #fff9c4;"
-            "color: #000000;"
-            "}"
-            "QTableView::item:selected:active {"
-            "color: #000000;"
-            "}"
-            "QTableView::item:selected:!active {"
-            "background-color: #fff9c4;"
-            "color: #000000;"
-            "}"
-        )
+        self._table.setStyleSheet(STANDARD_TABLE_VIEW_STYLESHEET)
         header = self._table.horizontalHeader()
         header.resizeSection(0, 95)
         header.resizeSection(1, 95)
@@ -189,13 +196,6 @@ class UrlaubsantragView(QWidget):
         header.resizeSection(3, 50)
         header.setStretchLastSection(True)
 
-        loeschen_layout = QHBoxLayout()
-        self._loeschen_button = QPushButton("Markierten Antrag loeschen", self)
-        self._loeschen_button.setToolTip(
-            "Loeschen der markierten Tabellenzeile (Taste Entf)."
-        )
-        loeschen_layout.addWidget(self._loeschen_button)
-        loeschen_layout.addStretch()
 
         self._status_label = QLabel("Bereit.", self)
 
@@ -205,7 +205,6 @@ class UrlaubsantragView(QWidget):
         root_layout.addLayout(toolbar_layout)
         root_layout.addLayout(formular_zeile)
         root_layout.addWidget(self._table)
-        root_layout.addLayout(loeschen_layout)
         root_layout.addWidget(self._status_label)
 
         loeschen_shortcut = QShortcut(QKeySequence.StandardKey.Delete, self._table)
@@ -215,12 +214,14 @@ class UrlaubsantragView(QWidget):
         self._laden_button.clicked.connect(self._lade_auswahl_jahr)
         self._jahr_spin.valueChanged.connect(self._on_jahr_changed)
         self._speichern_button.clicked.connect(self._on_speichern)
-        self._neuer_antrag_button.clicked.connect(self._on_neuer_antrag)
+        self._reset_button.clicked.connect(self._on_neuer_antrag)
         self._loeschen_button.clicked.connect(self._on_loeschen)
 
         selection_model = self._table.selectionModel()
         if selection_model is not None:
             selection_model.selectionChanged.connect(self._on_tabellen_auswahl_geaendert)
+
+        self._aktualisiere_formular_titel()
 
     def _bind_view_model(self) -> None:
         self._view_model.status_changed.connect(self._status_label.setText)
@@ -231,7 +232,8 @@ class UrlaubsantragView(QWidget):
             self._form_group.setTitle("Urlaubsantrag editieren")
             self._form_group.setStyleSheet(
                 "QGroupBox {"
-                "border: 1px dashed #757575;"
+                "color: blue;"
+                "border: 1px dashed blue;"
                 "border-radius: 5px;"
                 "margin-top: 14px;"
                 "padding-top: 14px;"
@@ -240,26 +242,75 @@ class UrlaubsantragView(QWidget):
                 "subcontrol-origin: margin;"
                 "subcontrol-position: top left;"
                 "left: 12px;"
-                "padding: 0 5px;"
+                "padding: 3px 5px 0px 5px;"
                 "}"
             )
         else:
             self._form_group.setTitle("Neuer Urlaubsantrag")
-            self._form_group.setStyleSheet("")
+            self._form_group.setStyleSheet("QGroupBox {"
+                "border: 1px solid #757575;"
+                "border-radius: 5px;"
+                "margin-top: 14px;"
+                "padding-top: 14px;"
+                "}"
+                "QGroupBox::title {"
+                "subcontrol-origin: margin;"
+                "subcontrol-position: top left;"
+                "left: 12px;"
+                "padding: 3px 5px 0px 5px;"
+                "}")
+        edit_mode = self._bearbeitungs_id is not None
+        self._reset_button.setVisible(edit_mode)
+        self._loeschen_button.setVisible(edit_mode)
+
+    @staticmethod
+    def _anzahl_werktage_mo_fr(von: date, bis: date) -> int:
+        if bis < von:
+            return 0
+        n = 0
+        d = von
+        while d <= bis:
+            if d.weekday() < 5:
+                n += 1
+            d += timedelta(days=1)
+        return n
+
+    @staticmethod
+    def _qdate_nach_date(qd: QDate) -> date:
+        return date(qd.year(), qd.month(), qd.day())
+
+    def _on_datum_von_auswahl_geaendert(self, qdatum: QDate) -> None:
+        self._datum_bis_input.blockSignals(True)
+        self._datum_bis_input.setDate(qdatum)
+        self._datum_bis_input.blockSignals(False)
+        self._urlaubstage_aus_datum_vorbelegen()
+
+    def _urlaubstage_aus_datum_vorbelegen(self) -> None:
+        von = self._qdate_nach_date(self._datum_von_input.date())
+        bis = self._qdate_nach_date(self._datum_bis_input.date())
+        self._urlaubstage_spin.setValue(float(self._anzahl_werktage_mo_fr(von, bis)))
 
     def _reset_formular_defaults(self) -> None:
         heute_q = QDate(date.today().year, date.today().month, date.today().day)
+        for de in (self._datum_von_input, self._datum_bis_input):
+            de.blockSignals(True)
         self._datum_von_input.setDate(heute_q)
         self._datum_bis_input.setDate(heute_q)
+        for de in (self._datum_von_input, self._datum_bis_input):
+            de.blockSignals(False)
+        self._urlaubstage_aus_datum_vorbelegen()
         self._urlaubstyp_input.setText("Jahresurlaub")
-        self._urlaubstage_spin.setValue(1.0)
         self._genehmigt_check.setChecked(False)
 
     def _zeile_ins_formular(self, row: UrlaubsantragRow) -> None:
         dv = datetime.strptime(row.datum_von, "%d.%m.%Y").date()
         db = datetime.strptime(row.datum_bis, "%d.%m.%Y").date()
+        for de in (self._datum_von_input, self._datum_bis_input):
+            de.blockSignals(True)
         self._datum_von_input.setDate(QDate(dv.year, dv.month, dv.day))
         self._datum_bis_input.setDate(QDate(db.year, db.month, db.day))
+        for de in (self._datum_von_input, self._datum_bis_input):
+            de.blockSignals(False)
         self._urlaubstyp_input.setText(row.urlaubstyp)
         stage_txt = row.urlaubstage.strip().replace(",", ".")
         self._urlaubstage_spin.setValue(float(stage_txt))

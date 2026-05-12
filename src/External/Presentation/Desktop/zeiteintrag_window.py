@@ -31,6 +31,7 @@ from App.app_config import ZeiteintragExcelExportSettings
 from External.Presentation.Desktop.feiertag_view import FeiertagView
 from External.Presentation.Desktop.krankmeldung_view import KrankmeldungView
 from External.Presentation.Desktop.stundenplan_view import StundenplanView
+from External.Presentation.Desktop.table_view_styles import STANDARD_TABLE_VIEW_STYLESHEET
 from External.Presentation.Desktop.urlaubsantrag_view import UrlaubsantragView
 from External.Presentation.Desktop.zeiteintrag_table_model import ZeiteintragTableModel
 from External.Presentation.Desktop.zeiteintrag_view_model import ZeiteintragViewModel
@@ -305,11 +306,7 @@ class ZeiteintragWindow(QMainWindow):
         self._table.setShowGrid(True)
         self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._table.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self._table.setStyleSheet(
-            "QTableView::item:selected {"
-            "background-color: #fff9c4;"
-            "}"
-        )
+        self._table.setStyleSheet(STANDARD_TABLE_VIEW_STYLESHEET)
         horizontal_header = self._table.horizontalHeader()
         horizontal_header.setStretchLastSection(False)
         horizontal_header.resizeSection(0, 50)

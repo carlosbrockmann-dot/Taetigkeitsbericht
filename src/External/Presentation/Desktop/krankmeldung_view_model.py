@@ -32,9 +32,7 @@ class KrankmeldungViewModel(QObject):
                 id=eintrag.id,
                 krank_von=eintrag.krank_von.strftime("%d.%m.%Y"),
                 krank_bis=eintrag.krank_bis.strftime("%d.%m.%Y"),
-                krankmeldung=eintrag.krankmeldung,
                 krankmeldungstage=str(eintrag.krankmeldungstage),
-                krankmeldungstagsname=eintrag.krankmeldungstagsname,
             )
             for eintrag in eintraege
         ]
@@ -45,20 +43,12 @@ class KrankmeldungViewModel(QObject):
         self,
         krank_von_text: str,
         krank_bis_text: str,
-        krankmeldung_text: str,
         krankmeldungstage_text: str,
-        krankmeldungstagsname: str,
     ) -> None:
         kv = krank_von_text.strip()
         kb = krank_bis_text.strip()
-        km = krankmeldung_text.strip()
-        name = krankmeldungstagsname.strip()
         if not kv or not kb:
             raise ValueError('"Krank von" und "Krank bis" sind erforderlich.')
-        if not km:
-            raise ValueError("Text der Krankmeldung darf nicht leer sein.")
-        if not name:
-            raise ValueError("Bezeichnung darf nicht leer sein.")
         krank_von = datetime.strptime(kv, "%d.%m.%Y").date()
         krank_bis = datetime.strptime(kb, "%d.%m.%Y").date()
         stage_text = krankmeldungstage_text.strip()
@@ -69,9 +59,7 @@ class KrankmeldungViewModel(QObject):
             id=None,
             krank_von=krank_von,
             krank_bis=krank_bis,
-            krankmeldung=km,
             krankmeldungstage=krankmeldungstage,
-            krankmeldungstagsname=name,
         )
         self._anwendung.erfasse(eintrag)
         self.status_changed.emit("Krankmeldung gespeichert.")

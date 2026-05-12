@@ -10,18 +10,14 @@ class KrankmeldungRow:
     id: int | None
     krank_von: str
     krank_bis: str
-    krankmeldung: str
     krankmeldungstage: str
-    krankmeldungstagsname: str
 
 
 class KrankmeldungTableModel(QAbstractTableModel):
     HEADERS = [
         "Von",
         "Bis",
-        "Krankmeldung",
         "Tage",
-        "Bezeichnung",
     ]
 
     def __init__(self) -> None:
@@ -67,11 +63,7 @@ class KrankmeldungTableModel(QAbstractTableModel):
         if col == 1:
             return row.krank_bis
         if col == 2:
-            return row.krankmeldung
-        if col == 3:
             return row.krankmeldungstage
-        if col == 4:
-            return row.krankmeldungstagsname
         return None
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:

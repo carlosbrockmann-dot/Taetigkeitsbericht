@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from injector import Binder, Module, provider
+from injector import Binder, Module, provider, singleton
 
 from Core.Application.feiertag_anwendung import FeiertagAnwendung
 from Core.Application.krankmeldung_anwendung import KrankmeldungAnwendung
@@ -53,39 +53,51 @@ class ApplicationDIModule(Module):
     ) -> KrankmeldungService:
         return KrankmeldungService(repository)
 
+    @singleton
     @provider
-    def provide_zeiteintrag_anwendung(
+    def provide_zeiteintrag_anwendung_dto(
         self,
-        service: ZeiteintragService,
+        zeiteintrag_service: ZeiteintragService,
         stundenplan_service: StundenplanService,
         feiertag_service: FeiertagService,
         urlaubsantrag_service: UrlaubsantragService,
         krankmeldung_service: KrankmeldungService,
-    ) -> ZeiteintragAnwendung:
+    ) -> ZeiteintragAnwendungDTO:
         return ZeiteintragAnwendungDTO(
-            service,
+            zeiteintrag_service,
             stundenplan_service,
             feiertag_service,
             urlaubsantrag_service,
             krankmeldung_service,
         )
 
+    @singleton
+    @provider
+    def provide_zeiteintrag_anwendung(
+        self, dto: ZeiteintragAnwendungDTO
+    ) -> ZeiteintragAnwendung:
+        return dto
+
+    @singleton
     @provider
     def provide_stundenplan_anwendung(
         self, service: StundenplanService
     ) -> StundenplanAnwendung:
         return StundenplanAnwendung(service)
 
+    @singleton
     @provider
     def provide_feiertag_anwendung(self, service: FeiertagService) -> FeiertagAnwendung:
         return FeiertagAnwendung(service)
 
+    @singleton
     @provider
     def provide_urlaubsantrag_anwendung(
         self, service: UrlaubsantragService
     ) -> UrlaubsantragAnwendung:
         return UrlaubsantragAnwendung(service)
 
+    @singleton
     @provider
     def provide_krankmeldung_anwendung(
         self, service: KrankmeldungService

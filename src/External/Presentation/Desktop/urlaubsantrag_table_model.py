@@ -21,9 +21,9 @@ class UrlaubsantragTableModel(QAbstractTableModel):
     HEADERS = [
         "Von",
         "Bis",
-        "Typ",
         "Tage",
         "Genehmigt",
+        "Typ",
     ]
 
     def __init__(self) -> None:
@@ -69,11 +69,11 @@ class UrlaubsantragTableModel(QAbstractTableModel):
         if col == 1:
             return row.datum_bis
         if col == 2:
-            return row.urlaubstyp
-        if col == 3:
             return row.urlaubstage
-        if col == 4:
+        if col == 3:
             return row.genehmigt
+        if col == 4:
+            return row.urlaubstyp
         return None
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:

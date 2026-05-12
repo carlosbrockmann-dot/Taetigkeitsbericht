@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from External.Presentation.Desktop.feiertag_view_model import FeiertagViewModel
+from External.Presentation.Desktop.table_view_styles import STANDARD_TABLE_VIEW_STYLESHEET
 
 
 class FeiertagView(QWidget):
@@ -71,6 +72,7 @@ class FeiertagView(QWidget):
         self._table.setAlternatingRowColors(True)
         self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self._table.setStyleSheet(STANDARD_TABLE_VIEW_STYLESHEET)
         header = self._table.horizontalHeader()
         header.setStretchLastSection(False)
         header.resizeSection(0, 95)

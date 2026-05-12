@@ -60,6 +60,4 @@ class KrankmeldungTable(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     krank_von: date
     krank_bis: date
-    krankmeldung: str = Field(max_length=80)
     krankmeldungstage: int = Field(ge=0)
-    krankmeldungstagsname: str = Field(max_length=80)

@@ -3,16 +3,18 @@ from __future__ import annotations
 from datetime import date
 
 from pydantic import ValidationError
+from PySide6.QtCore import QDate, QLocale
 from PySide6.QtGui import QShowEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QDateEdit,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QSpinBox,
     QTableView,
     QVBoxLayout,
@@ -20,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from External.Presentation.Desktop.krankmeldung_view_model import KrankmeldungViewModel
+from External.Presentation.Desktop.table_view_styles import STANDARD_TABLE_VIEW_STYLESHEET
 
 
 class KrankmeldungView(QWidget):
@@ -56,23 +59,31 @@ class KrankmeldungView(QWidget):
         form_group = QGroupBox("Neue Krankmeldung", self)
         form_layout = QFormLayout(form_group)
 
-        self._krank_von_input = QLineEdit(self)
-        self._krank_von_input.setPlaceholderText("DD.MM.YYYY")
-        self._krank_bis_input = QLineEdit(self)
-        self._krank_bis_input.setPlaceholderText("DD.MM.YYYY")
-        self._krankmeldung_input = QLineEdit(self)
-        self._krankmeldung_input.setPlaceholderText("Kurztext / Attest-Info")
-        self._krankmeldungstage_spin = QSpinBox(self)
+        locale_de = QLocale(QLocale.Language.German, QLocale.Country.Germany)
+        heute_q = QDate(date.today().year, date.today().month, date.today().day)
+
+        self._krank_von_input = QDateEdit(form_group)
+        self._krank_von_input.setCalendarPopup(True)
+        self._krank_von_input.setDisplayFormat("dd.MM.yyyy")
+        self._krank_von_input.setLocale(locale_de)
+        self._krank_von_input.setDate(heute_q)
+
+        self._krank_bis_input = QDateEdit(form_group)
+        self._krank_bis_input.setCalendarPopup(True)
+        self._krank_bis_input.setDisplayFormat("dd.MM.yyyy")
+        self._krank_bis_input.setLocale(locale_de)
+        self._krank_bis_input.setDate(heute_q)
+
+        for de in (self._krank_von_input, self._krank_bis_input):
+            de.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            de.setFixedWidth(de.sizeHint().width())
+        self._krankmeldungstage_spin = QSpinBox(form_group)
         self._krankmeldungstage_spin.setRange(0, 366)
         self._krankmeldungstage_spin.setValue(1)
-        self._krankmeldungstagsname_input = QLineEdit(self)
-        self._krankmeldungstagsname_input.setPlaceholderText("Bezeichnung")
 
         form_layout.addRow("Krank von:", self._krank_von_input)
         form_layout.addRow("Krank bis:", self._krank_bis_input)
-        form_layout.addRow("Krankmeldung:", self._krankmeldung_input)
         form_layout.addRow("Krankheitstage:", self._krankmeldungstage_spin)
-        form_layout.addRow("Bezeichnung:", self._krankmeldungstagsname_input)
 
         buttons_layout = QHBoxLayout()
         self._speichern_button = QPushButton("Krankmeldung speichern", self)
@@ -86,11 +97,11 @@ class KrankmeldungView(QWidget):
         self._table.setAlternatingRowColors(True)
         self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self._table.setStyleSheet(STANDARD_TABLE_VIEW_STYLESHEET)
         header = self._table.horizontalHeader()
         header.resizeSection(0, 95)
         header.resizeSection(1, 95)
-        header.resizeSection(2, 180)
-        header.resizeSection(3, 55)
+        header.resizeSection(2, 72)
         header.setStretchLastSection(True)
 
         self._status_label = QLabel("Bereit.", self)
@@ -119,11 +130,9 @@ class KrankmeldungView(QWidget):
     def _on_speichern(self) -> None:
         try:
             self._view_model.speichere_eintrag(
-                krank_von_text=self._krank_von_input.text(),
-                krank_bis_text=self._krank_bis_input.text(),
-                krankmeldung_text=self._krankmeldung_input.text(),
+                krank_von_text=self._krank_von_input.date().toString("dd.MM.yyyy"),
+                krank_bis_text=self._krank_bis_input.date().toString("dd.MM.yyyy"),
                 krankmeldungstage_text=str(self._krankmeldungstage_spin.value()),
-                krankmeldungstagsname=self._krankmeldungstagsname_input.text(),
             )
             self._lade_auswahl_jahr()
         except (ValueError, ValidationError) as exc:

@@ -15,9 +15,7 @@ def _row_to_domain(row: KrankmeldungTable) -> Krankmeldung:
         id=row.id,
         krank_von=row.krank_von,
         krank_bis=row.krank_bis,
-        krankmeldung=row.krankmeldung,
         krankmeldungstage=row.krankmeldungstage,
-        krankmeldungstagsname=row.krankmeldungstagsname,
     )
 
 
@@ -34,17 +32,13 @@ class SqlKrankmeldungRepository:
                 id=eintrag.id,
                 krank_von=eintrag.krank_von,
                 krank_bis=eintrag.krank_bis,
-                krankmeldung=eintrag.krankmeldung,
                 krankmeldungstage=eintrag.krankmeldungstage,
-                krankmeldungstagsname=eintrag.krankmeldungstagsname,
             )
             self._session.add(row)
         else:
             row.krank_von = eintrag.krank_von
             row.krank_bis = eintrag.krank_bis
-            row.krankmeldung = eintrag.krankmeldung
             row.krankmeldungstage = eintrag.krankmeldungstage
-            row.krankmeldungstagsname = eintrag.krankmeldungstagsname
         self._session.commit()
         self._session.refresh(row)
         return _row_to_domain(row)
