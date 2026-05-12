@@ -15,7 +15,7 @@ class StundenplanAnwendung:
         return self._service.hole_stundenplan(wochentag)
 
     def liste(self) -> list[Stundenplan]:
-        return self._service.liste_stundenplaeneintraege()
+        return self._service.liste_stundenplan_eintraege()
 
     def loesche_fuer_wochentag(self, wochentag: int) -> bool:
         return self._service.loesche_stundenplan(wochentag)

@@ -29,7 +29,7 @@ class StundenplanService:
     def hole_stundenplan(self, wochentag: int) -> list[Stundenplan]:
         return self._repository.get_by_wochentag(wochentag)
 
-    def liste_stundenplaeneintraege(self) -> list[Stundenplan]:
+    def liste_stundenplan_eintraege(self) -> list[Stundenplan]:
         return self._repository.list_all()
 
     def loesche_stundenplan(self, wochentag: int) -> bool:

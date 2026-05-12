@@ -6,7 +6,7 @@ from Core.Application.feiertag_anwendung import FeiertagAnwendung
 from Core.Application.krankmeldung_anwendung import KrankmeldungAnwendung
 from Core.Application.stundenplan_anwendung import StundenplanAnwendung
 from Core.Application.urlaubsantrag_anwendung import UrlaubsantragAnwendung
-from Core.Application.zeiteintrag_anwendung import ZeiteintragAnwendung
+from Core.Application.zeiteintrag_anwendung import ZeiteintragAnwendung, ZeiteintragAnwendungDTO
 from Core.Domain.interfaces.auth_interface import IAuthService
 from Core.Domain.interfaces.feiertag_repository_interface import IFeiertagRepository
 from Core.Domain.interfaces.krankmeldung_repository_interface import IKrankmeldungRepository
@@ -55,9 +55,20 @@ class ApplicationDIModule(Module):
 
     @provider
     def provide_zeiteintrag_anwendung(
-        self, service: ZeiteintragService
+        self,
+        service: ZeiteintragService,
+        stundenplan_service: StundenplanService,
+        feiertag_service: FeiertagService,
+        urlaubsantrag_service: UrlaubsantragService,
+        krankmeldung_service: KrankmeldungService,
     ) -> ZeiteintragAnwendung:
-        return ZeiteintragAnwendung(service)
+        return ZeiteintragAnwendungDTO(
+            service,
+            stundenplan_service,
+            feiertag_service,
+            urlaubsantrag_service,
+            krankmeldung_service,
+        )
 
     @provider
     def provide_stundenplan_anwendung(

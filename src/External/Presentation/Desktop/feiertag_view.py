@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import date
 
+from PySide6.QtCore import QDate
 from PySide6.QtGui import QShowEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QDateEdit,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -44,14 +46,16 @@ class FeiertagView(QWidget):
         self._jahr_spin.setValue(date.today().year)
         self._jahr_spin.setPrefix("Jahr: ")
         self._laden_button = QPushButton("Laden", self)
-        self._import_button = QPushButton("Import starten", self)
+        self._import_button = QPushButton("Import von Google starten", self)
 
         toolbar_layout.addWidget(self._jahr_spin)
         toolbar_layout.addWidget(self._laden_button)
         toolbar_layout.addWidget(self._import_button)
 
-        self._datum_input = QLineEdit(self)
-        self._datum_input.setPlaceholderText("Datum (DD.MM.YYYY)")
+        self._datum_input = QDateEdit(self)
+        self._datum_input.setCalendarPopup(True)
+        self._datum_input.setDisplayFormat("dd.MM.yyyy")
+        self._datum_input.setDate(QDate.currentDate())
         self._bezeichnung_input = QLineEdit(self)
         self._bezeichnung_input.setPlaceholderText("Bezeichnung freier Tag")
         self._hinzufuegen_button = QPushButton("Freien Tag hinzufuegen", self)
@@ -106,7 +110,7 @@ class FeiertagView(QWidget):
     def _on_hinzufuegen(self) -> None:
         try:
             self._view_model.fuege_freien_tag_hinzu(
-                datum_text=self._datum_input.text(),
+                datum_text=self._datum_input.date().toString("dd.MM.yyyy"),
                 bezeichnung=self._bezeichnung_input.text(),
             )
             self._lade_auswahl_jahr()
